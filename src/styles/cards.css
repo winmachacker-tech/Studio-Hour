@@ -1,0 +1,140 @@
+/* Card variants */
+
+.sh-card {
+  position: relative;
+  margin-bottom: 14px;
+  padding: 20px 20px 18px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.01)),
+    rgba(37, 22, 64, 0.55);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 14px 40px rgba(0,0,0,0.32),
+    inset 0 1px 0 rgba(255,255,255,0.04);
+}
+
+.sh-card-quiet {
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005)),
+    rgba(15, 40, 40, 0.55);
+}
+
+.sh-card-feature {
+  border-color: rgba(17, 153, 153, 0.32);
+  background:
+    radial-gradient(110% 80% at 0% 0%, rgba(17, 153, 153, 0.18), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.005)),
+    rgba(15, 40, 40, 0.7);
+}
+
+.sh-card-gold {
+  border-color: rgba(212, 168, 67, 0.32);
+  background:
+    radial-gradient(110% 80% at 100% 0%, rgba(212, 168, 67, 0.16), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.005)),
+    rgba(37, 22, 64, 0.55);
+}
+
+.sh-card-title {
+  margin: 8px 0 4px;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 22px;
+  line-height: 1.18;
+  color: var(--cream);
+  letter-spacing: -0.012em;
+  text-wrap: pretty;
+}
+.sh-card-title em {
+  font-style: italic;
+  color: var(--cream);
+}
+
+.sh-body {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--lavender);
+}
+.sh-body.cream { color: rgba(245, 238, 248, 0.82); }
+
+/* Chips */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--sans);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.chip::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.7;
+}
+.chip-teal     { color: var(--teal);     background: rgba(17, 153, 153, 0.14);  border-color: rgba(17, 153, 153, 0.22); }
+.chip-gold     { color: var(--gold);     background: rgba(212, 168, 67, 0.14);  border-color: rgba(212, 168, 67, 0.22); }
+.chip-rose     { color: var(--rose);     background: rgba(196, 122, 138, 0.16); border-color: rgba(196, 122, 138, 0.22); }
+.chip-lavender { color: var(--lavender); background: rgba(155, 138, 170, 0.14); border-color: rgba(155, 138, 170, 0.22); }
+.chip-cream    { color: var(--cream);    background: rgba(245, 238, 248, 0.06); border-color: rgba(245, 238, 248, 0.12); }
+.chip-muted    { color: var(--lavender); background: rgba(155, 138, 170, 0.08); border-color: transparent; opacity: 0.7; }
+
+.chip-quiet {
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: none;
+  background: transparent !important;
+  border-color: var(--line) !important;
+}
+.chip-quiet::before { display: none; }
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+/* Filter pills */
+
+.filter-row {
+  display: flex;
+  gap: 8px;
+  margin: 6px 0 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.filter-row::-webkit-scrollbar { display: none; }
+
+.filter-pill {
+  flex-shrink: 0;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.02);
+  color: var(--lavender);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: all 180ms ease;
+  white-space: nowrap;
+}
+.filter-pill:hover { color: var(--cream); border-color: var(--line-strong); }
+.filter-pill.is-on {
+  color: var(--night-plum);
+  background: var(--cream);
+  border-color: var(--cream);
+}

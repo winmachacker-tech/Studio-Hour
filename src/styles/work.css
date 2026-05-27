@@ -1,0 +1,38 @@
+/* Open Work screen */
+
+.work-list { display: grid; gap: 12px; }
+
+.work-card {
+  padding: 16px 18px 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.005)),
+    rgba(37, 22, 64, 0.45);
+}
+.work-card.is-done {
+  opacity: 0.55;
+  border-style: dashed;
+  background: rgba(15, 40, 40, 0.3);
+}
+
+.work-title {
+  margin: 4px 0 6px;
+  font-family: var(--serif);
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 1.22;
+  color: var(--cream);
+  letter-spacing: -0.01em;
+}
+.work-card.is-done .work-title {
+  text-decoration: line-through;
+  text-decoration-color: var(--lavender-dim);
+}
+
+.work-note {
+  margin: 4px 0 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--lavender);
+}

@@ -1,0 +1,42 @@
+/* ──────────────────────────────────────────────────────────
+   Studio Hour — design tokens
+   Bg: Night Plum · Surfaces: Studio Plum + Deep Teal
+   Accent: Danielle Teal · Gold (protected time) · Rose (mood)
+────────────────────────────────────────────────────────── */
+
+:root {
+  /* Danielle's palette */
+  --night-plum:     #130D1A;
+  --studio-plum:    #251640;
+  --studio-plum-2:  #2c1b4a;
+  --deep-teal:      #0F2828;
+  --deep-teal-2:    #143434;
+  --teal:           #119999;
+  --teal-soft:      #1aaaaa;
+  --teal-dim:       rgba(17, 153, 153, 0.18);
+  --gold:           #D4A843;
+  --gold-soft:      rgba(212, 168, 67, 0.16);
+  --rose:           #C47A8A;
+  --rose-soft:      rgba(196, 122, 138, 0.18);
+  --cream:          #F5EEF8;
+  --cream-warm:     #faf3fc;
+  --lavender:       #9B8AAA;
+  --lavender-dim:   rgba(155, 138, 170, 0.45);
+
+  /* Lines */
+  --line:           rgba(245, 238, 248, 0.08);
+  --line-soft:      rgba(245, 238, 248, 0.04);
+  --line-strong:    rgba(245, 238, 248, 0.16);
+
+  /* Typography — values injected by next/font via CSS variable classes on <body> */
+  --serif:          var(--font-cormorant), "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --serif-display:  var(--font-fraunces), var(--font-cormorant), Georgia, serif;
+  --sans:           var(--font-bricolage), "Source Sans 3", system-ui, sans-serif;
+
+  /* Page background */
+  --page-bg:
+    radial-gradient(120% 60% at 20% 0%,  rgba(43, 26, 75, 0.85),  transparent 55%),
+    radial-gradient(80%  50% at 100% 100%, rgba(15, 40, 40, 0.55), transparent 60%),
+    radial-gradient(60%  40% at 90% 4%,   rgba(212, 168, 67, 0.05), transparent 70%),
+    linear-gradient(180deg, #1a1124 0%, #130d1a 60%, #0e0816 100%);
+}

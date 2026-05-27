@@ -1,0 +1,146 @@
+/* Ideas screen */
+
+.ideas-list {
+  display: grid;
+  gap: 11px;
+  margin-bottom: 26px;
+}
+
+.idea-card {
+  position: relative;
+  padding: 14px 16px 13px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.005)),
+    rgba(37, 22, 64, 0.42);
+}
+.idea-card.status-used { opacity: 0.7; }
+
+.idea-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.platform-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--lavender);
+}
+.platform-tag::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  background: var(--studio-plum-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--cream);
+  font-family: var(--sans);
+  letter-spacing: 0;
+}
+.platform-tag.platform-tiktok::before    { content: "TT"; background: rgba(196, 122, 138, 0.28); color: var(--rose); }
+.platform-tag.platform-instagram::before { content: "IG"; background: rgba(212, 168, 67, 0.22); color: var(--gold); }
+.platform-tag.platform-facebook::before  { content: "FB"; background: rgba(17, 153, 153, 0.22); color: var(--teal); }
+.platform-tag.platform-nextdoor::before  { content: "ND"; background: rgba(155, 138, 170, 0.22); color: var(--lavender); }
+.platform-tag.platform-artwork::before   { content: "\2726"; background: rgba(245, 238, 248, 0.1); color: var(--cream); font-family: var(--serif); }
+
+.idea-status {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-family: var(--sans);
+}
+.idea-status.status-saved { color: var(--teal); }
+.idea-status.status-draft { color: var(--gold); }
+.idea-status.status-used  { color: var(--lavender); }
+
+.idea-title {
+  margin: 2px 0 4px;
+  font-family: var(--serif);
+  font-weight: 400;
+  font-size: 16.5px;
+  line-height: 1.28;
+  color: var(--cream);
+  letter-spacing: -0.005em;
+}
+
+.idea-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--lavender);
+  line-height: 1.45;
+  font-style: italic;
+  font-family: var(--serif);
+}
+
+/* Floating add button */
+.fab {
+  position: absolute;
+  right: 22px;
+  bottom: 110px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px 11px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(17, 153, 153, 0.5);
+  background: rgba(17, 153, 153, 0.92);
+  color: var(--cream-warm);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 12px 28px rgba(17, 153, 153, 0.32);
+  z-index: 4;
+}
+.fab:hover { background: var(--teal-soft); }
+
+/* Add idea inline form */
+.add-idea-form {
+  margin-bottom: 26px;
+}
+.add-idea-input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--line-strong);
+  outline: none;
+  color: var(--cream);
+  font-family: var(--serif);
+  font-size: 17px;
+  font-weight: 400;
+  padding: 10px 0;
+  margin-bottom: 12px;
+}
+.add-idea-input::placeholder {
+  color: var(--lavender);
+  font-style: italic;
+}
+.add-idea-note {
+  font-size: 14px;
+  font-style: italic;
+}
+.add-idea-platform-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.add-idea-platform-row .filter-pill {
+  padding: 5px 11px;
+  font-size: 11px;
+}
