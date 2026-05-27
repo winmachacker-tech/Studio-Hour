@@ -481,13 +481,15 @@ This lets the Guide say "I see you have a dentist appointment at 2" with confide
 - [ ] Deploy function (manual: `supabase functions deploy google-auth-callback`)
 - [ ] Test end-to-end (requires app-side OAuth flow from Phase G)
 
-### Phase E — Edge Function: `calendar-sync`
-- [ ] Create Edge Function that fetches today's events from Google Calendar API
-- [ ] Handle token refresh transparently
-- [ ] Map Google events to `ScheduleBlock[]` shape
-- [ ] Return `{ connected, blocks, error? }`
-- [ ] Handle all failure modes (no token, expired, revoked, network error)
-- [ ] Test with curl
+### Phase E — Edge Function: `calendar-sync` ✓
+- [x] Create Edge Function `supabase/functions/calendar-sync/index.ts`
+- [x] Reads tokens from `google_tokens`, refreshes if expired (PKCE, no client secret)
+- [x] Fetches today's events from Google Calendar API (primary calendar, `singleEvents=true`)
+- [x] Maps Google events to `ScheduleBlock[]` — title, time, duration, type only (no descriptions, attendees, links)
+- [x] Returns `{ connected, blocks, source, date, error? }` — never returns raw tokens or full event payloads
+- [x] Handles: not_connected, reauth_required, google_api_error, config missing, malformed response
+- [ ] Deploy function (manual: `supabase functions deploy calendar-sync`)
+- [ ] Test end-to-end (requires deployed `google-auth-callback` + app-side OAuth from Phase G)
 
 ### Phase F — App Integration
 - [ ] Update `useSchedule()` to optionally fetch from `calendar-sync` Edge Function
@@ -550,7 +552,7 @@ Completed: 2026-05-27
 
 4. **Token encryption** — Need to determine if Supabase Vault is available on the current plan. If not, application-level encryption adds complexity to the Edge Functions.
 
-5. **Timezone handling** — Google Calendar events use the event's timezone. The app needs to display times in the user's local timezone. `ScheduleBlock.time` is currently a simple string like `"9:00"` — this works but may need timezone-aware formatting.
+5. **Timezone handling** — `calendar-sync` passes a `timeZone` parameter to Google Calendar `events.list`, which controls the date window and the timezone of returned `dateTime` values. Defaults to `America/Los_Angeles`. Configurable via the `STUDIO_HOUR_TIME_ZONE` env var (IANA timezone string). The app should later send the device's local date explicitly; for V1 the server default is sufficient for a California-based user.
 
 6. **Multi-calendar visibility** — V1 uses primary calendar only. Some users split personal/work across calendars. This is a future concern, not a V1 blocker.
 
