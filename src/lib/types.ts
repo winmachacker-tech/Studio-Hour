@@ -102,3 +102,21 @@ export interface SpecialProject {
   progress: number;
   progressColor?: "gold" | "teal";
 }
+
+// ── Calendar integration (type-only, not wired yet) ──────────────────
+
+export type CalendarProvider = "google";
+
+export type CalendarConnectionStatus =
+  | "not_connected"
+  | "connected"
+  | "reauth_needed";
+
+export type CalendarEventSource = "google_calendar" | "default";
+
+export interface CalendarSyncResult {
+  connected: boolean;
+  blocks: ScheduleBlock[];
+  source: CalendarEventSource;
+  error?: "reauth_needed" | "fetch_failed";
+}
