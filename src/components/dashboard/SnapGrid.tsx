@@ -1,7 +1,7 @@
 "use client";
 
 import SnapCard from "./SnapCard";
-import type { WorkItem, CheckIn, ScheduleBlock, Idea } from "@/lib/types";
+import type { WorkItem, CheckIn, ScheduleBlock, Idea, GuideMessage } from "@/lib/types";
 
 function todaySnap(
   checkIn: CheckIn,
@@ -67,20 +67,54 @@ function ideasSnap(
   };
 }
 
+function guideSnap(
+  guideMessages: GuideMessage[]
+): { headline: string; meta: string } {
+  const assistantMsgs = guideMessages.filter((m) => m.role === "assistant");
+  const last = assistantMsgs.at(-1);
+
+  if (last) {
+    const truncated =
+      last.content.length > 60
+        ? last.content.slice(0, 57) + "..."
+        : last.content;
+
+    const date = new Date(last.timestamp);
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const h = date.getHours();
+    const m = String(date.getMinutes()).padStart(2, "0");
+    const ampm = h >= 12 ? "pm" : "am";
+    const hour12 = h % 12 || 12;
+
+    return {
+      headline: truncated,
+      meta: `last note · ${days[date.getDay()]} ${hour12}:${m} ${ampm}`,
+    };
+  }
+
+  return {
+    headline: "Ask the Guide to shape the day.",
+    meta: "your planning space",
+  };
+}
+
 export default function SnapGrid({
   checkIn,
   blocks,
   workItems,
   ideas,
+  guideMessages,
 }: {
   checkIn: CheckIn;
   blocks: ScheduleBlock[];
   workItems: WorkItem[];
   ideas: Idea[];
+  guideMessages: GuideMessage[];
 }) {
   const today = todaySnap(checkIn, blocks);
   const work = workSnap(workItems);
   const ideasData = ideasSnap(ideas);
+  const guide = guideSnap(guideMessages);
 
   return (
     <div className="snap-grid">
@@ -102,8 +136,8 @@ export default function SnapGrid({
       />
       <SnapCard
         eyebrow="guide"
-        headline="You asked for a low-energy plan on Thursday."
-        meta="last visit · Sat 4:12 pm"
+        headline={guide.headline}
+        meta={guide.meta}
       />
     </div>
   );

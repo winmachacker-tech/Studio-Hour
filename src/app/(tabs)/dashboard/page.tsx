@@ -9,6 +9,7 @@ import { useCheckIn } from "@/hooks/useCheckIn";
 import { useSchedule } from "@/hooks/useSchedule";
 import { useTasks } from "@/hooks/useTasks";
 import { useIdeas } from "@/hooks/useIdeas";
+import { useGuide } from "@/hooks/useGuide";
 import { formatDateLine } from "@/lib/dates";
 import { useCalendarDay } from "@/hooks/useCalendarDay";
 import {
@@ -23,6 +24,7 @@ export default function DashboardPage() {
   const { blocks } = useSchedule();
   const { items: workItems } = useTasks();
   const { items: ideas } = useIdeas();
+  const { messages: guideMessages } = useGuide();
 
   return (
     <>
@@ -34,7 +36,13 @@ export default function DashboardPage() {
         </p>
       </header>
 
-      <SnapGrid checkIn={checkIn} blocks={blocks} workItems={workItems} ideas={ideas} />
+      <SnapGrid
+        checkIn={checkIn}
+        blocks={blocks}
+        workItems={workItems}
+        ideas={ideas}
+        guideMessages={guideMessages}
+      />
 
       <DueSoonCard items={SEED_DUE_ITEMS} />
 
