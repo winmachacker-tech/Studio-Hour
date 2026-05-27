@@ -1,36 +1,31 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { View, Text, StyleSheet } from "react-native";
+import { StyleSheet } from "react-native";
 import TodayScreen from "../screens/TodayScreen";
 import OpenWorkScreen from "../screens/OpenWorkScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import IdeasScreen from "../screens/IdeasScreen";
 import GuideScreen from "../screens/GuideScreen";
+import {
+  TodayIcon,
+  OpenWorkIcon,
+  DashboardIcon,
+  IdeasIcon,
+  GuideIcon,
+} from "../components/icons/TabIcons";
 import { colors, fonts } from "../lib/theme";
 
 const Tab = createBottomTabNavigator();
 
-function TabIcon({ label, focused }: { label: string; focused: boolean }) {
-  const glyphs: Record<string, string> = {
-    Today: "◉",
-    "Open Work": "◫",
-    Dashboard: "⊞",
-    Ideas: "◇",
-    Guide: "✦",
-  };
-  return (
-    <View style={styles.iconWrap}>
-      <Text
-        style={[
-          styles.glyph,
-          { color: focused ? colors.teal : colors.lavender },
-        ]}
-      >
-        {glyphs[label] ?? "·"}
-      </Text>
-    </View>
-  );
-}
+const ICON_SIZE = 22;
+
+const ICONS: Record<string, React.FC<{ color: string; size: number }>> = {
+  Today: TodayIcon,
+  "Open Work": OpenWorkIcon,
+  Dashboard: DashboardIcon,
+  Ideas: IdeasIcon,
+  Guide: GuideIcon,
+};
 
 export default function MainTabs() {
   return (
@@ -41,9 +36,11 @@ export default function MainTabs() {
         tabBarActiveTintColor: colors.teal,
         tabBarInactiveTintColor: colors.lavender,
         tabBarLabelStyle: styles.tabLabel,
-        tabBarIcon: ({ focused }) => (
-          <TabIcon label={route.name} focused={focused} />
-        ),
+        tabBarIconStyle: styles.tabIcon,
+        tabBarIcon: ({ color }) => {
+          const Icon = ICONS[route.name];
+          return Icon ? <Icon color={color} size={ICON_SIZE} /> : null;
+        },
       })}
     >
       <Tab.Screen name="Today" component={TodayScreen} />
@@ -61,22 +58,17 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     borderTopColor: "transparent",
     elevation: 0,
-    height: 68,
-    paddingBottom: 8,
+    height: 64,
+    paddingBottom: 6,
     paddingTop: 6,
   },
   tabLabel: {
     fontFamily: fonts.medium,
-    fontSize: 10,
+    fontSize: 9.5,
     letterSpacing: 0.4,
+    marginTop: 2,
   },
-  iconWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: 24,
-    height: 20,
-  },
-  glyph: {
-    fontSize: 16,
+  tabIcon: {
+    marginBottom: -2,
   },
 });
