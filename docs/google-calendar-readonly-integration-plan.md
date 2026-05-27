@@ -472,12 +472,14 @@ This lets the Guide say "I see you have a dentist appointment at 2" with confide
 - [x] Create Android OAuth client: Studio Hour Android Debug (`com.studiohour.app`)
 - [ ] Note: production distribution requires Google app verification for `calendar.events.readonly` scope
 
-### Phase D — Edge Function: `google-auth-callback`
-- [ ] Create Edge Function that receives auth code + PKCE code_verifier from app
-- [ ] Exchange at Google token endpoint (no client secret — Android native PKCE flow)
-- [ ] Upsert tokens into `google_tokens` table
-- [ ] Set secret: `GOOGLE_CLIENT_ID` (no `GOOGLE_CLIENT_SECRET` needed)
-- [ ] Test with curl
+### Phase D — Edge Function: `google-auth-callback` ✓
+- [x] Create Edge Function `supabase/functions/google-auth-callback/index.ts`
+- [x] Receives `{ code, codeVerifier, redirectUri }`, exchanges at Google token endpoint (PKCE, no client secret)
+- [x] Upserts tokens into `google_tokens`, preserves existing refresh_token when Google omits it
+- [x] Returns `{ connected, provider, scope, tokenExpiry }` — never returns raw tokens
+- [ ] Set secret: `GOOGLE_CLIENT_ID` (manual: `supabase secrets set GOOGLE_CLIENT_ID=...`)
+- [ ] Deploy function (manual: `supabase functions deploy google-auth-callback`)
+- [ ] Test end-to-end (requires app-side OAuth flow from Phase G)
 
 ### Phase E — Edge Function: `calendar-sync`
 - [ ] Create Edge Function that fetches today's events from Google Calendar API
