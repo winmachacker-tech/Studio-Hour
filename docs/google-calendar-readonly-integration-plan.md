@@ -105,31 +105,47 @@ interface ScheduleBlock {
 
 ---
 
-## 3. Proposed Supabase Table: `google_tokens`
+## 3. Supabase Table: `google_tokens`
+
+**Migration**: `supabase/migrations/00004_google_tokens.sql`
 
 ```sql
-create table public.google_tokens (
-  user_id    uuid primary key references auth.users(id) on delete cascade,
-  access_token   text not null,
-  refresh_token  text not null,
-  token_expiry   timestamptz not null,
-  scope          text not null,
-  created_at     timestamptz default now(),
-  updated_at     timestamptz default now()
+create table google_tokens (
+  user_id        uuid        primary key references auth.users(id) on delete cascade,
+  provider       text        not null default 'google',
+  access_token   text,
+  refresh_token  text,
+  token_expiry   timestamptz,
+  scope          text,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
 );
 
--- RLS: users can only read their own connection status (not raw tokens)
-alter table public.google_tokens enable row level security;
+alter table google_tokens enable row level security;
+-- No user-facing policies. Only the service role (Edge Functions) can
+-- read or write this table.
+```
 
--- Service role only for token read/write (Edge Functions use service role)
--- No user-facing RLS select policy exposes raw tokens
--- A separate RPC can expose connection status (connected: boolean) to the app
+**Connection status RPC** (same migration file):
+
+```sql
+create or replace function get_calendar_connection_status()
+returns json
+language plpgsql
+security definer
+set search_path = public
+as $$
+  -- Returns { connected, provider, scope, expired }
+  -- Never returns access_token or refresh_token.
+  -- SECURITY DEFINER required: google_tokens has no user-facing RLS policies.
+$$;
 ```
 
 ### Notes
-- `access_token` and `refresh_token` are stored as encrypted text. Evaluate Supabase Vault availability on current plan — if available, use it. Otherwise, application-level encryption in the Edge Function before insert.
-- Only the Edge Functions (running with service role key) read/write this table.
-- The app never sees raw tokens. It only needs to know: "Am I connected to Google?"
+- Token fields are nullable — they are placeholders for future encrypted token storage and must not be exposed to app logs.
+- No user-facing RLS policies (same pattern as `guide_usage`). Only service role (Edge Functions) can read/write.
+- The app checks connection status exclusively via `get_calendar_connection_status()`, which uses `auth.uid()` and returns only safe metadata.
+- Evaluate Supabase Vault availability on current plan for token encryption. Otherwise, application-level encryption in Edge Functions before insert.
 
 ---
 
@@ -339,10 +355,10 @@ This lets the Guide say "I see you have a dentist appointment at 2" with confide
 - [x] Write this technical plan
 - [x] Add lightweight calendar TypeScript types
 
-### Phase B — Supabase Foundation
-- [ ] Create Supabase migration: `google_tokens` table with RLS
-- [ ] Create RPC function: `get_calendar_connection_status(p_user_id)` → returns `{ connected: boolean }`
-- [ ] Verify migration on Supabase project `nzjfmhldlcpvkqpzkztc`
+### Phase B — Supabase Foundation ✓
+- [x] Create Supabase migration `00004_google_tokens.sql`: `google_tokens` table, RLS enabled, no user-facing policies
+- [x] Create RPC function `get_calendar_connection_status()` — uses `auth.uid()`, returns `{ connected, provider, scope, expired }`, never exposes raw tokens
+- [ ] Run migration on Supabase project `nzjfmhldlcpvkqpzkztc` (manual: `supabase db push`)
 
 ### Phase C — Google Cloud Setup (manual, not code)
 - [ ] Create Google Cloud project (or reuse existing)
