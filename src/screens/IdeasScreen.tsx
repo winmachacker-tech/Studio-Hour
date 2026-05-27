@@ -1,0 +1,121 @@
+import React, { useState } from "react";
+import { ScrollView, View, Text, Pressable, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Eyebrow from "../components/shared/Eyebrow";
+import FilterRow from "../components/shared/FilterRow";
+import IdeaCard from "../components/ideas/IdeaCard";
+import AddIdeaForm from "../components/ideas/AddIdeaForm";
+import { useIdeas } from "../hooks/useIdeas";
+import { colors, fonts } from "../lib/theme";
+
+const FILTERS = ["All", "Posts", "Artwork", "Voiceover"];
+
+export default function IdeasScreen() {
+  const insets = useSafeAreaInsets();
+  const [filter, setFilter] = useState("All");
+  const [showForm, setShowForm] = useState(false);
+  const { items, addIdea, cycleStatus, isHydrated } = useIdeas();
+
+  const shown =
+    filter === "All" ? items : items.filter((i) => i.kind === filter);
+
+  return (
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 20, paddingBottom: 130 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Eyebrow>the idea drawer</Eyebrow>
+          <Text style={styles.title}>Loose thoughts, kept.</Text>
+          <Text style={styles.subtitle}>
+            Nothing here has to become anything. Open the drawer when the room
+            feels quiet.
+          </Text>
+        </View>
+
+        <FilterRow filters={FILTERS} active={filter} onChange={setFilter} />
+
+        {showForm && (
+          <AddIdeaForm
+            onAdd={addIdea}
+            onClose={() => setShowForm(false)}
+          />
+        )}
+
+        {isHydrated &&
+          shown.map((idea) => (
+            <IdeaCard
+              key={idea.id}
+              idea={idea}
+              onCycleStatus={() => cycleStatus(idea.id)}
+            />
+          ))}
+      </ScrollView>
+
+      {!showForm && (
+        <Pressable
+          style={[styles.fab, { bottom: 90 + insets.bottom }]}
+          onPress={() => setShowForm(true)}
+        >
+          <Text style={styles.fabText}>＋  add an idea</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.nightPlum,
+  },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    paddingHorizontal: 22,
+  },
+  header: {
+    marginBottom: 22,
+  },
+  title: {
+    fontFamily: fonts.light,
+    fontSize: 30,
+    letterSpacing: -0.7,
+    color: colors.creamWarm,
+    marginTop: 6,
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontFamily: fonts.regular,
+    fontStyle: "italic",
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.lavender,
+    maxWidth: 300,
+  },
+  fab: {
+    position: "absolute",
+    right: 22,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: colors.teal,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  fabText: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.creamWarm,
+    letterSpacing: 0.2,
+  },
+});

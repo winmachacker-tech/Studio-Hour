@@ -2,9 +2,10 @@ import React from "react";
 import { View, ActivityIndicator, StyleSheet, StatusBar } from "react-native";
 import { useFonts } from "expo-font";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { NavigationContainer } from "@react-navigation/native";
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 import AuthScreen from "./src/screens/AuthScreen";
-import HomeScreen from "./src/screens/HomeScreen";
+import MainTabs from "./src/navigation/MainTabs";
 
 function AppContent() {
   const { session, loading } = useAuth();
@@ -21,7 +22,7 @@ function AppContent() {
     return <AuthScreen />;
   }
 
-  return <HomeScreen />;
+  return <MainTabs />;
 }
 
 export default function App() {
@@ -44,9 +45,11 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="light-content" backgroundColor="#130D1A" />
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
+      <NavigationContainer>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </NavigationContainer>
     </SafeAreaProvider>
   );
 }
