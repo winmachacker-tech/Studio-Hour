@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { useLocalStorage } from "./useLocalStorage";
+import { useAuth } from "@/contexts/AuthContext";
 import type { GuideMessage } from "@/lib/types";
 
 const STORAGE_KEY = "sh-guide-history";
@@ -18,6 +19,7 @@ export function useGuide() {
     []
   );
   const [isLoading, setIsLoading] = useState(false);
+  const { accessToken } = useAuth();
   const idCounter = useRef(0);
 
   const nextId = useCallback(() => {
@@ -41,11 +43,36 @@ export function useGuide() {
       setIsLoading(true);
 
       try {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (accessToken) {
+          headers["Authorization"] = `Bearer ${accessToken}`;
+        }
+
         const res = await fetch("/api/guide", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({ message, context }),
         });
+
+        if (res.status === 401) {
+          throw new Error("auth");
+        }
+
+        if (res.status === 429) {
+          const data = await res.json();
+          const limitMsg: GuideMessage = {
+            id: nextId(),
+            role: "assistant",
+            content:
+              data.error ||
+              "You've reached today's limit. The Guide will be ready again tomorrow morning.",
+            timestamp: new Date().toISOString(),
+          };
+          setMessages((prev) => [...prev, limitMsg]);
+          return null;
+        }
 
         if (!res.ok) {
           throw new Error(`Guide API error: ${res.status}`);
@@ -62,12 +89,15 @@ export function useGuide() {
 
         setMessages((prev) => [...prev, assistantMsg]);
         return data;
-      } catch {
+      } catch (err) {
+        const isAuthError =
+          err instanceof Error && err.message === "auth";
         const errorMsg: GuideMessage = {
           id: nextId(),
           role: "assistant",
-          content:
-            "I couldn't connect just now. Try again in a moment — I'm not going anywhere.",
+          content: isAuthError
+            ? "Your session expired. Please sign in again."
+            : "I couldn't connect just now. Try again in a moment — I'm not going anywhere.",
           timestamp: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, errorMsg]);
@@ -76,7 +106,7 @@ export function useGuide() {
         setIsLoading(false);
       }
     },
-    [nextId, setMessages]
+    [nextId, setMessages, accessToken]
   );
 
   const clearHistory = useCallback(() => {

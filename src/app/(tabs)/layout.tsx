@@ -3,6 +3,9 @@
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import TabIcon from "@/components/shell/TabIcon";
+import LoginCard from "@/components/auth/LoginCard";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabaseConfigured } from "@/lib/supabase/client";
 
 const TABS = [
   { id: "today", label: "Today", href: "/today" },
@@ -18,8 +21,17 @@ export default function TabsLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { session, loading } = useAuth();
 
   const activeTab = TABS.find((t) => pathname === t.href)?.id ?? "today";
+
+  if (supabaseConfigured && loading) {
+    return <div className="sh-app" />;
+  }
+
+  if (supabaseConfigured && !session) {
+    return <LoginCard />;
+  }
 
   return (
     <div className="sh-app">

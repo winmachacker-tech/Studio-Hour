@@ -1,6 +1,27 @@
+import Anthropic from "@anthropic-ai/sdk";
 import { buildGuidePrompt, type GuideContext } from "@/lib/guide-prompt";
+import { verifyAuth } from "@/lib/supabase/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+const DAILY_LIMIT = 30;
 
 export async function POST(request: Request) {
+  // --- Auth gate (active when Supabase is configured) ---
+  const authRequired = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+  let userId: string | null = null;
+
+  if (authRequired) {
+    const user = await verifyAuth(request);
+    if (!user) {
+      return Response.json(
+        { error: "Sign in to use the Guide." },
+        { status: 401 }
+      );
+    }
+    userId = user.id;
+  }
+
+  // --- Parse body ---
   const body = await request.json();
   const { message, context } = body as {
     message: string;
@@ -14,17 +35,47 @@ export async function POST(request: Request) {
     );
   }
 
-  // Build the prompt that would go to Claude
+  // --- Rate limit (active when auth is required) ---
+  if (authRequired && userId) {
+    const usage = await checkAndIncrementUsage(userId);
+    if (!usage.allowed) {
+      return Response.json(
+        {
+          error:
+            "You’ve reached today’s limit. The Guide will be ready again tomorrow morning.",
+          daily_limit: usage.limit,
+          messages_used: usage.used,
+        },
+        { status: 429 }
+      );
+    }
+  }
+
+  // --- Build prompt and call Claude (or mock fallback) ---
   const prompt = buildGuidePrompt(message, context ?? {});
 
-  // TODO: Replace mock with real Claude API call
-  // const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  // const response = await anthropic.messages.create({
-  //   model: "claude-sonnet-4-6",
-  //   max_tokens: 600,
-  //   system: prompt.system,
-  //   messages: [{ role: "user", content: prompt.userMessage }],
-  // });
+  if (process.env.ANTHROPIC_API_KEY) {
+    try {
+      const anthropic = new Anthropic();
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 600,
+        system: prompt.system,
+        messages: [{ role: "user", content: prompt.userMessage }],
+      });
+
+      const textBlock = response.content.find((b) => b.type === "text");
+      const content = textBlock?.text ?? "";
+
+      return Response.json({
+        content,
+        suggestions: generateSuggestions(message),
+        createdAt: new Date().toISOString(),
+      });
+    } catch {
+      // Claude call failed — fall through to mock response
+    }
+  }
 
   const content = generateMockResponse(message, context);
 
@@ -33,6 +84,69 @@ export async function POST(request: Request) {
     suggestions: generateSuggestions(message),
     createdAt: new Date().toISOString(),
   });
+}
+
+// --- Rate limiting ---
+// Increments usage count when a guide message is attempted (before Claude call).
+// Uses Supabase RPC for atomic check-and-increment. Falls back to direct
+// table operations if the RPC function is not yet deployed.
+
+async function checkAndIncrementUsage(
+  userId: string
+): Promise<{ allowed: boolean; used: number; limit: number }> {
+  const admin = createAdminClient();
+  const today = new Date().toISOString().split("T")[0];
+
+  try {
+    const { data } = await admin.rpc("use_guide_message", {
+      p_user_id: userId,
+      p_limit: DAILY_LIMIT,
+    });
+
+    if (data) {
+      return {
+        allowed: data.allowed,
+        used: data.messages_used,
+        limit: data.daily_limit,
+      };
+    }
+  } catch {
+    // RPC not deployed yet — fall back to direct table access
+  }
+
+  // Fallback: direct table read/write
+  const { data: row } = await admin
+    .from("guide_usage")
+    .select("messages_used")
+    .eq("user_id", userId)
+    .eq("date", today)
+    .maybeSingle();
+
+  const currentCount = row?.messages_used ?? 0;
+
+  if (currentCount >= DAILY_LIMIT) {
+    return { allowed: false, used: currentCount, limit: DAILY_LIMIT };
+  }
+
+  if (row) {
+    await admin
+      .from("guide_usage")
+      .update({
+        messages_used: currentCount + 1,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+      .eq("date", today);
+  } else {
+    await admin.from("guide_usage").insert({
+      user_id: userId,
+      date: today,
+      messages_used: 1,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  return { allowed: true, used: currentCount + 1, limit: DAILY_LIMIT };
 }
 
 function generateMockResponse(

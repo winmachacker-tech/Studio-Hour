@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Cormorant_Garamond, Fraunces } from "next/font/google";
+import { AuthProvider } from "@/contexts/AuthContext";
 import "./globals.css";
 
 const bricolage = localFont({
@@ -60,7 +61,9 @@ export default function RootLayout({
       lang="en"
       className={`${bricolage.variable} ${cormorant.variable} ${fraunces.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }
