@@ -149,29 +149,132 @@ $$;
 
 ---
 
-## 4. Proposed Edge Functions
+## 4. OAuth Flow: Authorization Code + PKCE (Native Android)
 
-### 4a. `google-auth-callback`
+### Why PKCE, not a client secret
 
-**Purpose**: Exchange the OAuth authorization code for tokens and store them.
+The Google Cloud OAuth client created for Studio Hour is an **Android native client**, identified by package name (`com.studiohour.app`) + SHA-1 signing certificate. Android native clients do not have a client secret — Google verifies the app's identity via the certificate fingerprint at the authorization step.
 
-**Flow**:
-1. App completes Google OAuth consent flow, receives authorization code
-2. App calls `supabase.functions.invoke('google-auth-callback', { body: { code, redirectUri } })`
-3. Edge Function verifies caller JWT
-4. Exchanges authorization code for access + refresh tokens via Google OAuth2 token endpoint
-5. Stores tokens in `google_tokens` table (upsert on `user_id`)
-6. Returns `{ connected: true }` to app
+PKCE (Proof Key for Code Exchange) replaces the client secret for native apps:
+- The app generates a random `code_verifier` and derives a `code_challenge` (SHA-256 hash)
+- The `code_challenge` is sent with the authorization request
+- The `code_verifier` is sent with the token exchange request
+- Google validates that the verifier matches the challenge — proving the same app that started the flow is completing it
+
+### High-level flow
+
+```
+┌─────────────┐   1. OAuth + PKCE    ┌──────────────┐
+│  Mobile App │──────────────────────▶│  Google Auth  │
+│             │   code_challenge      │  Consent      │
+│             │◀──────────────────────│  Screen       │
+│             │   2. auth code        └──────────────┘
+│             │
+│             │   3. code +           ┌──────────────┐   4. exchange    ┌──────────────┐
+│             │      code_verifier    │  Edge Func:  │───────────────▶│  Google Token │
+│             │──────────────────────▶│  google-auth │                │  Endpoint     │
+│             │                       │  -callback   │◀───────────────│              │
+│             │◀──────────────────────│              │   5. tokens    └──────────────┘
+│             │   7. { connected }    │              │
+└─────────────┘                       │   6. upsert  │
+                                      │   google_    │
+                                      │   tokens     │
+                                      └──────────────┘
+```
+
+**Step by step**:
+
+1. App opens system browser / Chrome Custom Tab to Google's authorization endpoint with:
+   - `client_id` (the Android OAuth client ID)
+   - `redirect_uri` (the app's custom scheme, e.g. `com.studiohour.app://redirect`)
+   - `scope=https://www.googleapis.com/auth/calendar.events.readonly`
+   - `code_challenge` (SHA-256 of a random code_verifier)
+   - `code_challenge_method=S256`
+   - `response_type=code`
+   - `access_type=offline` (to receive a refresh_token)
+   - `prompt=consent` (required on first connect to get refresh_token)
+
+2. User consents. Google redirects to the app's custom scheme URI with an authorization code.
+
+3. App sends `{ code, codeVerifier, redirectUri }` to the Edge Function via:
+   ```typescript
+   supabase.functions.invoke('google-auth-callback', {
+     body: { code, codeVerifier, redirectUri }
+   })
+   ```
+
+4. Edge Function exchanges the code at `https://oauth2.googleapis.com/token`:
+   ```
+   POST /token
+   grant_type=authorization_code
+   code=<auth_code>
+   client_id=<GOOGLE_CLIENT_ID>
+   code_verifier=<code_verifier>
+   redirect_uri=<redirect_uri>
+   ```
+   No `client_secret` field — not needed for Android native clients.
+
+5. Google returns `{ access_token, refresh_token, expires_in, scope }`.
+
+6. Edge Function upserts tokens into `google_tokens` table.
+
+7. Edge Function returns `{ connected: true }` to app. Tokens never reach the device.
+
+### Token refresh (in `calendar-sync`, no client secret needed)
+
+```
+POST https://oauth2.googleapis.com/token
+grant_type=refresh_token
+refresh_token=<refresh_token>
+client_id=<GOOGLE_CLIENT_ID>
+```
+
+No `client_secret` for refresh either — Google allows this for Android native clients.
+
+### Library recommendation: `expo-auth-session`
+
+**`expo-auth-session`** is the recommended package for the OAuth flow in the app.
+
+- Built for Expo projects, compatible with `expo run:android` (production-style Gradle builds)
+- Handles browser interaction and redirect capture
+- Provides PKCE `code_verifier` / `code_challenge` generation
+- Does not require Expo Go — works with dev clients and standalone builds
+- Not currently installed — **requires `npx expo install expo-auth-session expo-crypto` with approval**
+
+`expo-crypto` is a peer dependency used by `expo-auth-session` for PKCE challenge generation.
+
+**Alternative**: `react-native-app-auth` (wraps AppAuth-Android directly). More mature for OAuth specifically, but `expo-auth-session` is the standard Expo path and avoids manual Android build config.
+
+### Prerequisite: `scheme` in app.json
+
+`expo-auth-session` requires a `scheme` field in `app.json` to register a custom URI scheme for the redirect. Currently missing:
+
+```json
+{
+  "expo": {
+    "scheme": "studiohour",
+    ...
+  }
+}
+```
+
+This generates a redirect URI like `studiohour://redirect` that `expo-auth-session` uses to capture the authorization code after consent. The scheme must also be registered in the Google Cloud Console under the Android OAuth client's redirect URIs (or handled via `com.studiohour.app` custom scheme).
+
+### Edge Function: `google-auth-callback`
+
+**Purpose**: Receive authorization code + PKCE verifier from app, exchange for tokens at Google, store in Supabase.
 
 **Secrets required**:
-- `GOOGLE_CLIENT_ID` — from Google Cloud Console
-- `GOOGLE_CLIENT_SECRET` — from Google Cloud Console
+- `GOOGLE_CLIENT_ID` — the Android OAuth client ID from Google Cloud Console
 - Existing `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+
+**No `GOOGLE_CLIENT_SECRET`** — Android native OAuth clients do not use one.
 
 **Security**:
 - Authorization code is single-use and short-lived
-- Client secret stays server-side only
-- Tokens stored server-side only
+- PKCE code_verifier proves the exchange request came from the same app that started the flow
+- Tokens are stored server-side only — they never reach the mobile app
+- Edge Function verifies caller JWT before processing
 
 ### 4b. `calendar-sync`
 
@@ -218,8 +321,8 @@ https://www.googleapis.com/auth/calendar.events.readonly
 - The mobile app never sees, stores, or transmits Google tokens
 
 ### Token lifecycle
-1. **Initial grant**: `google-auth-callback` exchanges auth code → stores access + refresh tokens
-2. **Refresh**: `calendar-sync` checks `token_expiry` before each Google API call. If expired, uses refresh token to get new access token, updates row.
+1. **Initial grant**: `google-auth-callback` exchanges auth code + PKCE verifier → stores access + refresh tokens. No client secret used.
+2. **Refresh**: `calendar-sync` checks `token_expiry` before each Google API call. If expired, sends refresh_token + client_id to Google's token endpoint (no client secret). Updates row with new access token + expiry.
 3. **Revocation**: If refresh fails with `invalid_grant`, the Edge Function deletes the token row and returns `{ connected: false, error: "reauth_needed" }`. The app shows a reconnect prompt.
 4. **Disconnect**: A future `google-disconnect` Edge Function (or extension of `google-auth-callback`) can delete the token row and revoke the token with Google.
 
@@ -360,17 +463,20 @@ This lets the Guide say "I see you have a dentist appointment at 2" with confide
 - [x] Create RPC function `get_calendar_connection_status()` — uses `auth.uid()`, returns `{ connected, provider, scope, expired }`, never exposes raw tokens
 - [ ] Run migration on Supabase project `nzjfmhldlcpvkqpzkztc` (manual: `supabase db push`)
 
-### Phase C — Google Cloud Setup (manual, not code)
-- [ ] Create Google Cloud project (or reuse existing)
-- [ ] Enable Google Calendar API
-- [ ] Configure OAuth consent screen
-- [ ] Create OAuth 2.0 client ID (type: Android / Web as needed)
+### Phase C — Google Cloud Setup ✓
+- [x] Create Google Cloud project: Studio Hour
+- [x] Enable Google Calendar API
+- [x] Configure OAuth consent screen (testing mode)
+- [x] Add test users: winmachacker@gmail.com, Danielle.tishkun@gmail.com
+- [x] Add scope: `https://www.googleapis.com/auth/calendar.events.readonly`
+- [x] Create Android OAuth client: Studio Hour Android Debug (`com.studiohour.app`)
 - [ ] Note: production distribution requires Google app verification for `calendar.events.readonly` scope
 
 ### Phase D — Edge Function: `google-auth-callback`
-- [ ] Create Edge Function that exchanges authorization code for tokens
-- [ ] Store tokens in `google_tokens` table (encrypted)
-- [ ] Set secrets: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- [ ] Create Edge Function that receives auth code + PKCE code_verifier from app
+- [ ] Exchange at Google token endpoint (no client secret — Android native PKCE flow)
+- [ ] Upsert tokens into `google_tokens` table
+- [ ] Set secret: `GOOGLE_CLIENT_ID` (no `GOOGLE_CLIENT_SECRET` needed)
 - [ ] Test with curl
 
 ### Phase E — Edge Function: `calendar-sync`
@@ -388,11 +494,12 @@ This lets the Guide say "I see you have a dentist appointment at 2" with confide
 - [ ] No UI changes to ScheduleCard — it already renders `ScheduleBlock[]`
 
 ### Phase G — OAuth Flow in App
-- [ ] Add Google sign-in button (settings screen or dedicated connection screen)
-- [ ] Use `expo-auth-session` (or `react-native-app-auth`) for OAuth flow
-- [ ] Send authorization code to `google-auth-callback` Edge Function
+- [ ] Add `scheme: "studiohour"` to `app.json` (required for redirect URI)
+- [ ] Install `expo-auth-session` + `expo-crypto` (requires approval, triggers native rebuild)
+- [ ] Implement Google OAuth with PKCE via `expo-auth-session`
+- [ ] Send auth code + code_verifier + redirect_uri to `google-auth-callback` Edge Function
 - [ ] On success, trigger `calendar-sync` to load real schedule
-- [ ] Package install required: `expo-auth-session` — needs approval
+- [ ] Add connect/disconnect UI (settings screen or dedicated connection screen)
 
 ### Phase H — Validation
 - [ ] End-to-end test: connect Google → see real calendar events on Today screen
@@ -403,16 +510,48 @@ This lets the Guide say "I see you have a dentist appointment at 2" with confide
 
 ---
 
-## 11. Risks and Open Questions
+## 11. Google Cloud Setup Status
+
+Completed: 2026-05-27
+
+### Project
+- **Google Cloud project**: Studio Hour
+- **Google Calendar API**: enabled
+
+### OAuth Consent Screen
+- **Status**: testing mode
+- **Test users**:
+  - winmachacker@gmail.com
+  - Danielle.tishkun@gmail.com
+- **Scope**: `https://www.googleapis.com/auth/calendar.events.readonly`
+
+### Android OAuth Client
+- **Name**: Studio Hour Android Debug
+- **Package**: `com.studiohour.app`
+- **SHA-1**: `5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25`
+
+### Important notes
+- This is an **Android native OAuth client** — it has no client secret. App identity is verified by package name + SHA-1 signing certificate.
+- This client is for the current debug/local Android build. A separate client will be required for production/release signing or Play signing.
+- Client ID is not a secret, but downloaded OAuth JSON files should not be committed unless explicitly reviewed.
+- The token exchange uses PKCE (code_verifier / code_challenge) instead of a client secret. See section 4 for the full flow.
+
+---
+
+## 12. Risks and Open Questions
 
 1. **Google OAuth consent screen verification** — `calendar.events.readonly` is a restricted scope. Google requires verification for apps with >100 users. For a single-user app this may not matter immediately, but could block broader distribution later.
 
-2. **OAuth library compatibility with Gradle build** — `expo-auth-session` and `react-native-app-auth` both need to work without Expo Go. Verify the chosen library works with `expo run:android` before committing to it.
+2. **`expo-auth-session` redirect URI in Gradle builds** — `expo-auth-session` uses the `scheme` field from `app.json` to generate redirect URIs (e.g. `studiohour://redirect`). This works in production-style `expo run:android` builds, but the exact redirect URI format should be verified on-device before relying on it. If the custom scheme redirect does not work, fallback options include using `WebBrowser.openAuthSessionAsync` directly or switching to `react-native-app-auth`.
 
-3. **Token encryption** — Need to determine if Supabase Vault is available on the current plan. If not, application-level encryption adds complexity to the Edge Functions.
+3. **PKCE in `expo-auth-session`** — `expo-auth-session` generates PKCE challenges internally via `expo-crypto`. The code_verifier must be extracted and sent to the Edge Function for server-side token exchange. Verify that `expo-auth-session` exposes the raw code_verifier (not just the code_challenge) — if it only does the full exchange internally, a manual PKCE implementation may be needed.
 
-4. **Timezone handling** — Google Calendar events use the event's timezone. The app needs to display times in the user's local timezone. `ScheduleBlock.time` is currently a simple string like `"9:00"` — this works but may need timezone-aware formatting.
+4. **Token encryption** — Need to determine if Supabase Vault is available on the current plan. If not, application-level encryption adds complexity to the Edge Functions.
 
-5. **Multi-calendar visibility** — V1 uses primary calendar only. Some users split personal/work across calendars. This is a future concern, not a V1 blocker.
+5. **Timezone handling** — Google Calendar events use the event's timezone. The app needs to display times in the user's local timezone. `ScheduleBlock.time` is currently a simple string like `"9:00"` — this works but may need timezone-aware formatting.
 
-6. **Package approval** — OAuth flow will require installing `expo-auth-session` or equivalent. This needs explicit approval before Phase G.
+6. **Multi-calendar visibility** — V1 uses primary calendar only. Some users split personal/work across calendars. This is a future concern, not a V1 blocker.
+
+7. **Package approval** — OAuth flow requires installing `expo-auth-session` and `expo-crypto`. Both need explicit approval before Phase G. Installing triggers a native rebuild (`expo run:android` again).
+
+8. **Debug vs. release SHA-1** — The current Android OAuth client uses the debug keystore SHA-1. A production release (or Play App Signing) uses a different certificate. A second OAuth client must be created for production before any public release.
