@@ -16,7 +16,6 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 // ── Configuration ─────────────────────────────────────────────────────
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
-const ANTHROPIC_MODEL = "claude-sonnet-4-6";
 const ANTHROPIC_VERSION = "2023-06-01";
 const ANTHROPIC_MAX_TOKENS = 600;
 const DAILY_LIMIT = 30;
@@ -165,7 +164,8 @@ async function verifyCaller(
 // ── Rate limiting via RPC ────────────────────────────────────────────
 
 async function checkUsage(
-  userId: string
+  userId: string,
+  dbg?: DebugInfo
 ): Promise<{ allowed: boolean; used: number; limit: number }> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -177,7 +177,9 @@ async function checkUsage(
   });
 
   if (error || !data) {
-    // RPC failed — allow but don't track (fail open for usability)
+    const msg = error?.message ?? "no data returned";
+    if (dbg) dbg.rpcError = msg;
+    console.error(`[studio-hour-guide] rpc_error use_guide_message: ${msg}`);
     return { allowed: true, used: 0, limit: DAILY_LIMIT };
   }
 
@@ -192,7 +194,8 @@ async function checkUsage(
 
 async function getOrCreateConversation(
   userId: string,
-  conversationId?: string
+  conversationId?: string,
+  dbg?: DebugInfo
 ): Promise<string | null> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -214,22 +217,13 @@ async function getOrCreateConversation(
     .select("id")
     .single();
 
-  if (error || !data) return null;
+  if (error || !data) {
+    const msg = error?.message ?? "no data";
+    if (dbg) dbg.conversationError = msg;
+    console.error(`[studio-hour-guide] conversation_insert_failed: ${msg}`);
+    return null;
+  }
   return data.id;
-}
-
-async function saveMessage(
-  conversationId: string,
-  role: "user" | "assistant",
-  content: string
-): Promise<void> {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const admin = createClient(supabaseUrl, serviceKey);
-
-  await admin
-    .from("messages")
-    .insert({ conversation_id: conversationId, role, content });
 }
 
 async function getRecentMessages(
@@ -257,11 +251,28 @@ interface AnthropicMessage {
   content: string;
 }
 
+interface DebugInfo {
+  stage: string;
+  model?: string;
+  hasAnthropicKey?: boolean;
+  anthropicStatus?: number;
+  anthropicErrorText?: string;
+  rpcError?: string;
+  conversationError?: string;
+  messageInsertError?: string;
+}
+
 async function callClaude(
   apiKey: string,
   systemPrompt: string,
-  messages: AnthropicMessage[]
+  messages: AnthropicMessage[],
+  dbg: DebugInfo
 ): Promise<string | null> {
+  const model = Deno.env.get("ANTHROPIC_MODEL") ?? "claude-sonnet-4-20250514";
+  dbg.model = model;
+  dbg.stage = "anthropic_call";
+  console.log(`[studio-hour-guide] calling anthropic model=${model} messages=${messages.length}`);
+
   const res = await fetch(ANTHROPIC_API_URL, {
     method: "POST",
     headers: {
@@ -270,28 +281,47 @@ async function callClaude(
       "anthropic-version": ANTHROPIC_VERSION,
     },
     body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
+      model,
       max_tokens: ANTHROPIC_MAX_TOKENS,
       system: systemPrompt,
       messages,
     }),
   });
 
-  if (!res.ok) return null;
+  dbg.anthropicStatus = res.status;
+
+  if (!res.ok) {
+    const errorBody = await res.text().catch(() => "(unreadable)");
+    dbg.anthropicErrorText = errorBody.slice(0, 500);
+    dbg.stage = "anthropic_http_error";
+    console.error(`[studio-hour-guide] anthropic_http_error status=${res.status} body=${errorBody}`);
+    return null;
+  }
 
   const payload = (await res.json().catch(() => null)) as {
     content?: Array<{ type: string; text?: string }>;
   } | null;
 
-  if (!payload || !Array.isArray(payload.content)) return null;
+  if (!payload || !Array.isArray(payload.content)) {
+    dbg.stage = "anthropic_response_malformed";
+    console.error(`[studio-hour-guide] anthropic_response_malformed payload_keys=${payload ? Object.keys(payload).join(",") : "null"}`);
+    return null;
+  }
 
-  return (
-    payload.content
-      .filter((b) => b.type === "text" && typeof b.text === "string")
-      .map((b) => b.text as string)
-      .join("")
-      .trim() || null
-  );
+  const text = payload.content
+    .filter((b) => b.type === "text" && typeof b.text === "string")
+    .map((b) => b.text as string)
+    .join("")
+    .trim();
+
+  if (!text) {
+    dbg.stage = "anthropic_response_empty";
+    console.error("[studio-hour-guide] anthropic_response_empty");
+    return null;
+  }
+
+  dbg.stage = "success";
+  return text;
 }
 
 // ── Handler ──────────────────────────────────────────────────────────
@@ -312,6 +342,8 @@ Deno.serve(async (req: Request) => {
     return json({ error: "method_not_allowed" }, 405);
   }
 
+  const dbg: DebugInfo = { stage: "init" };
+
   // Auth
   const authHeader =
     req.headers.get("authorization") ??
@@ -324,7 +356,9 @@ Deno.serve(async (req: Request) => {
 
   // API key
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+  dbg.hasAnthropicKey = !!apiKey;
   if (!apiKey) {
+    dbg.stage = "missing_api_key";
     console.error("[studio-hour-guide] ANTHROPIC_API_KEY not configured");
     return json({ error: "Guide is not configured yet." }, 500);
   }
@@ -342,12 +376,14 @@ Deno.serve(async (req: Request) => {
     return json({ error: "Message is required." }, 400);
   }
 
+  const wantDebug = body.debug === true;
   const context = (body.context ?? {}) as GuideContext;
   const requestConversationId =
     typeof body.conversationId === "string" ? body.conversationId : undefined;
 
   // Rate limit
-  const usage = await checkUsage(caller.userId);
+  dbg.stage = "rate_limit";
+  const usage = await checkUsage(caller.userId, dbg);
   if (!usage.allowed) {
     return json(
       {
@@ -361,23 +397,66 @@ Deno.serve(async (req: Request) => {
   }
 
   // Conversation
+  dbg.stage = "conversation";
   const conversationId = await getOrCreateConversation(
     caller.userId,
-    requestConversationId
+    requestConversationId,
+    dbg
   );
   if (!conversationId) {
-    return json({ error: "Could not create conversation." }, 500);
+    dbg.stage = "conversation_failed";
+    dbg.conversationError = "insert returned null";
+    const result: Record<string, unknown> = { error: "Could not create conversation." };
+    if (wantDebug) result.debug = dbg;
+    return json(result, 500);
   }
 
   // Save user message
-  await saveMessage(conversationId, "user", message);
+  dbg.stage = "save_user_message";
+  {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(supabaseUrl, serviceKey);
+    const { error: msgErr } = await admin
+      .from("messages")
+      .insert({ conversation_id: conversationId, role: "user", content: message });
+    if (msgErr) {
+      dbg.messageInsertError = msgErr.message;
+      console.error(`[studio-hour-guide] message_insert_failed role=user: ${msgErr.message}`);
+    }
+  }
 
-  // Build messages array with recent history
+  // Build messages array: prior history + current user message last
+  dbg.stage = "fetch_history";
   const recentMessages = await getRecentMessages(conversationId);
-  const claudeMessages: AnthropicMessage[] = recentMessages.map((m) => ({
+
+  // Drop the just-saved user message from the tail so we can re-append it
+  // as the guaranteed final entry. This prevents assistant-last ordering.
+  let history = recentMessages.map((m) => ({
     role: m.role,
     content: m.content,
   }));
+  if (
+    history.length > 0 &&
+    history[history.length - 1].role === "user" &&
+    history[history.length - 1].content === message
+  ) {
+    history = history.slice(0, -1);
+  }
+
+  // Trim any trailing assistant messages from history
+  while (
+    history.length > 0 &&
+    history[history.length - 1].role === "assistant"
+  ) {
+    history.pop();
+  }
+
+  // Re-append current user message as the final message
+  const claudeMessages: AnthropicMessage[] = [
+    ...history,
+    { role: "user", content: message },
+  ];
 
   // Build system prompt with studio context
   const systemPrompt = buildSystemPrompt(context);
@@ -385,25 +464,41 @@ Deno.serve(async (req: Request) => {
   // Call Claude
   let content: string | null = null;
   try {
-    content = await callClaude(apiKey, systemPrompt, claudeMessages);
+    content = await callClaude(apiKey, systemPrompt, claudeMessages, dbg);
   } catch (e) {
+    dbg.stage = "claude_exception";
+    dbg.anthropicErrorText = e instanceof Error ? e.message : String(e);
     console.error(
-      `[studio-hour-guide] claude_error kind=${e instanceof Error ? e.name : "unknown"}`
+      `[studio-hour-guide] claude_exception kind=${e instanceof Error ? e.name : "unknown"} message=${e instanceof Error ? e.message : String(e)}`
     );
   }
 
   if (!content) {
+    console.error("[studio-hour-guide] falling_back_to_default content=null");
     content =
       "I couldn't connect just now. Try again in a moment — I'm not going anywhere.";
   }
 
   // Save assistant response
-  await saveMessage(conversationId, "assistant", content);
+  {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(supabaseUrl, serviceKey);
+    const { error: saveErr } = await admin
+      .from("messages")
+      .insert({ conversation_id: conversationId, role: "assistant", content });
+    if (saveErr) {
+      console.error(`[studio-hour-guide] message_insert_failed role=assistant: ${saveErr.message}`);
+    }
+  }
 
-  return json({
+  const result: Record<string, unknown> = {
     content,
     conversationId,
     suggestions: generateSuggestions(message),
     createdAt: new Date().toISOString(),
-  });
+  };
+  if (wantDebug) result.debug = dbg;
+
+  return json(result);
 });
