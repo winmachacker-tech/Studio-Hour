@@ -497,9 +497,10 @@ This lets the Guide say "I see you have a dentist appointment at 2" with confide
 - [ ] Add connection status check (call `get_calendar_connection_status` RPC or infer from `calendar-sync` response)
 - [ ] No UI changes to ScheduleCard — it already renders `ScheduleBlock[]`
 
-### Phase G — OAuth Flow in App
-- [ ] Add `scheme: "studiohour"` to `app.json` (required for redirect URI)
-- [ ] Install `expo-auth-session` + `expo-crypto` (requires approval, triggers native rebuild)
+### Phase G — OAuth Flow in App (prerequisites partially complete)
+- [x] Add `scheme: "studiohour"` to `app.json`
+- [x] Create `src/lib/calendar/googleCalendarAuth.ts` — constants, discovery endpoints, types for OAuth result and connection status
+- [ ] Install `expo-auth-session` + `expo-crypto` (requires approval, triggers native rebuild): `npx expo install expo-auth-session expo-crypto`
 - [ ] Implement Google OAuth with PKCE via `expo-auth-session`
 - [ ] Send auth code + code_verifier + redirect_uri to `google-auth-callback` Edge Function
 - [ ] On success, trigger `calendar-sync` to load real schedule
