@@ -2,7 +2,35 @@ import React from "react";
 import { View, StyleSheet } from "react-native";
 import SnapCard from "./SnapCard";
 import { colors } from "../../lib/theme";
+import type { GuideMessage } from "../../hooks/useGuide";
 import type { CheckIn, ScheduleBlock, WorkItem, Idea } from "../../lib/types";
+
+function guideSnap(
+  messages: GuideMessage[]
+): { headline: string; meta: string } {
+  const assistantMsgs = messages.filter((m) => m.role === "assistant");
+  const last = assistantMsgs.at(-1);
+  if (last) {
+    const truncated =
+      last.content.length > 55
+        ? last.content.slice(0, 52) + "..."
+        : last.content;
+    const date = new Date(last.timestamp);
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const h = date.getHours();
+    const m = String(date.getMinutes()).padStart(2, "0");
+    const ampm = h >= 12 ? "pm" : "am";
+    const hour12 = h % 12 || 12;
+    return {
+      headline: truncated,
+      meta: `last note · ${days[date.getDay()]} ${hour12}:${m} ${ampm}`,
+    };
+  }
+  return {
+    headline: "Ask the Guide to shape the day.",
+    meta: "your planning space",
+  };
+}
 
 function todaySnap(
   checkIn: CheckIn,
@@ -70,15 +98,18 @@ export default function SnapGrid({
   blocks,
   workItems,
   ideas,
+  guideMessages = [],
 }: {
   checkIn: CheckIn;
   blocks: ScheduleBlock[];
   workItems: WorkItem[];
   ideas: Idea[];
+  guideMessages?: GuideMessage[];
 }) {
   const today = todaySnap(checkIn, blocks);
   const work = workSnap(workItems);
   const ideasData = ideasSnap(ideas);
+  const guide = guideSnap(guideMessages);
 
   return (
     <View style={styles.grid}>
@@ -99,8 +130,8 @@ export default function SnapGrid({
         />
         <SnapCard
           eyebrow="guide"
-          headline="Ask the Guide to shape the day."
-          meta="your planning space"
+          headline={guide.headline}
+          meta={guide.meta}
         />
       </View>
     </View>

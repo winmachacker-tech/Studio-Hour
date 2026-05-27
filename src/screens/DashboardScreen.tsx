@@ -11,6 +11,7 @@ import { useSchedule } from "../hooks/useSchedule";
 import { useTasks } from "../hooks/useTasks";
 import { useIdeas } from "../hooks/useIdeas";
 import { useRituals } from "../hooks/useRituals";
+import { useGuide } from "../hooks/useGuide";
 import { formatDateLine, getCalendarDay } from "../lib/dates";
 import {
   SEED_DUE_ITEMS,
@@ -27,6 +28,7 @@ export default function DashboardScreen() {
   const { items: workItems } = useTasks();
   const { items: ideas } = useIdeas();
   const { doneCount, total } = useRituals();
+  const { messages: guideMessages } = useGuide();
 
   const followUps = workItems.filter(
     (w) => w.status === "Needs Follow-Up"
@@ -55,6 +57,7 @@ export default function DashboardScreen() {
         blocks={blocks}
         workItems={workItems}
         ideas={ideas}
+        guideMessages={guideMessages}
       />
 
       {checkIn.completed && (

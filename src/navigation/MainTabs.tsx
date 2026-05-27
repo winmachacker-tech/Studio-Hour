@@ -5,16 +5,10 @@ import TodayScreen from "../screens/TodayScreen";
 import OpenWorkScreen from "../screens/OpenWorkScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import IdeasScreen from "../screens/IdeasScreen";
-import PlaceholderScreen from "../screens/PlaceholderScreen";
+import GuideScreen from "../screens/GuideScreen";
 import { colors, fonts } from "../lib/theme";
 
 const Tab = createBottomTabNavigator();
-
-function GuideScreen() {
-  return (
-    <PlaceholderScreen eyebrow="studio guide" title="What's on your mind?" />
-  );
-}
 
 function TabIcon({ label, focused }: { label: string; focused: boolean }) {
   const glyphs: Record<string, string> = {
