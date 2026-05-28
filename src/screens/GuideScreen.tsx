@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useCallback } from "react";
+import React, { useRef, useEffect, useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Eyebrow from "../components/shared/Eyebrow";
 import PromptStack from "../components/guide/PromptStack";
+import SettingsModal from "../components/guide/SettingsModal";
 import Composer from "../components/guide/Composer";
 import { useGuide } from "../hooks/useGuide";
 import { useCheckIn } from "../hooks/useCheckIn";
@@ -30,6 +31,7 @@ export default function GuideScreen() {
   const { rituals } = useRituals();
 
   const scrollRef = useRef<ScrollView>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const hasConversation = messages.length > 0;
 
   useEffect(() => {
@@ -95,7 +97,19 @@ export default function GuideScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <Eyebrow color={colors.teal}>studio guide</Eyebrow>
+          <View style={styles.headerRow}>
+            <Eyebrow color={colors.teal}>studio guide</Eyebrow>
+            <Pressable
+              onPress={() => setSettingsOpen(true)}
+              style={({ pressed }) => [
+                styles.gearButton,
+                pressed && styles.gearButtonPressed,
+              ]}
+              hitSlop={10}
+            >
+              <Text style={styles.gearIcon}>⚙</Text>
+            </Pressable>
+          </View>
           <Text style={styles.title}>What's on your mind?</Text>
           {!hasConversation && (
             <Text style={styles.subtitle}>
@@ -171,6 +185,11 @@ export default function GuideScreen() {
       <View style={{ paddingHorizontal: 22, paddingBottom: insets.bottom + 68 }}>
         <Composer onSend={handleSend} isLoading={isLoading} />
       </View>
+
+      <SettingsModal
+        visible={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -188,6 +207,26 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 22,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  gearButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  gearButtonPressed: {
+    backgroundColor: "rgba(245, 238, 248, 0.08)",
+  },
+  gearIcon: {
+    fontSize: 16,
+    color: colors.lavender,
+    opacity: 0.7,
   },
   title: {
     fontFamily: fonts.light,
