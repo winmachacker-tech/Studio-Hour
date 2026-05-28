@@ -7,7 +7,7 @@ const PROMPTS = [
   { label: "Help me choose what to work on", key: "choose-work" },
   { label: "Give me a low-energy plan", key: "low-energy" },
   { label: "Turn this idea into a post", key: "idea-post" },
-  { label: "Help me follow up on a mural lead", key: "mural-lead" },
+  { label: "Help me write a follow-up message", key: "follow-up" },
 ];
 
 export default function PromptStack({

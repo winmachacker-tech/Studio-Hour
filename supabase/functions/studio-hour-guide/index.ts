@@ -125,10 +125,10 @@ function buildSystemPrompt(context: GuideContext): string {
 function generateSuggestions(message: string): string[] | undefined {
   const lower = message.toLowerCase();
   if (lower.includes("plan")) {
-    return ["What about the mural leads?", "Adjust for low energy", "Add content time"];
+    return ["What needs follow-up?", "Adjust for low energy", "Add content time"];
   }
   if (lower.includes("low-energy") || lower.includes("tired") || lower.includes("gentle")) {
-    return ["What's the easiest thing to finish?", "Help me reply to Maya", "Just talk to me"];
+    return ["What's the easiest thing to finish?", "Help me write a follow-up message", "Just talk to me"];
   }
   if (lower.includes("content") || lower.includes("post") || lower.includes("idea")) {
     return ["Write a caption draft", "What should I post this week?", "Turn another idea into a post"];

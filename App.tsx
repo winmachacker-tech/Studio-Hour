@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { View, ActivityIndicator, StyleSheet, StatusBar } from "react-native";
 import { useFonts } from "expo-font";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -6,11 +6,17 @@ import { NavigationContainer } from "@react-navigation/native";
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 import AuthScreen from "./src/screens/AuthScreen";
 import MainTabs from "./src/navigation/MainTabs";
+import { cleanSeedData } from "./src/lib/cleanSeedData";
 
 function AppContent() {
   const { session, loading } = useAuth();
+  const [migrated, setMigrated] = useState(false);
 
-  if (loading) {
+  useEffect(() => {
+    cleanSeedData().then(() => setMigrated(true));
+  }, []);
+
+  if (loading || !migrated) {
     return (
       <View style={styles.splash}>
         <ActivityIndicator color="#119999" size="large" />

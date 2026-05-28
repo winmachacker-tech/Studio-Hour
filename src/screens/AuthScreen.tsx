@@ -58,7 +58,7 @@ export default function AuthScreen() {
 
         <TextInput
           style={styles.input}
-          placeholder="danielle@studio.com"
+          placeholder="Email"
           placeholderTextColor={colors.lavender}
           value={email}
           onChangeText={setEmail}

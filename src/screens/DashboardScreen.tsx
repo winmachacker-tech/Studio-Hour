@@ -3,9 +3,6 @@ import { ScrollView, View, Text, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Eyebrow from "../components/shared/Eyebrow";
 import SnapGrid from "../components/dashboard/SnapGrid";
-import DueSoonCard from "../components/dashboard/DueSoonCard";
-import LeadsCard from "../components/dashboard/LeadsCard";
-import SpecialProjects from "../components/dashboard/SpecialProjects";
 import { useCheckIn } from "../hooks/useCheckIn";
 import { useSchedule } from "../hooks/useSchedule";
 import { useTasks } from "../hooks/useTasks";
@@ -13,11 +10,6 @@ import { useIdeas } from "../hooks/useIdeas";
 import { useRituals } from "../hooks/useRituals";
 import { useGuide } from "../hooks/useGuide";
 import { formatDateLine, getCalendarDay } from "../lib/dates";
-import {
-  SEED_DUE_ITEMS,
-  SEED_MURAL_LEADS,
-  SEED_SPECIAL_PROJECTS,
-} from "../lib/constants";
 import { colors, fonts } from "../lib/theme";
 
 export default function DashboardScreen() {
@@ -83,12 +75,6 @@ export default function DashboardScreen() {
           )}
         </View>
       )}
-
-      <DueSoonCard items={SEED_DUE_ITEMS} />
-
-      <LeadsCard leads={SEED_MURAL_LEADS} />
-
-      <SpecialProjects projects={SEED_SPECIAL_PROJECTS} />
 
       <Text style={styles.foot}>
         — a calm room is its own kind of command.
