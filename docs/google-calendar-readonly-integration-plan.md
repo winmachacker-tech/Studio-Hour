@@ -415,8 +415,11 @@ interface GoogleCalendarEvent {
 - Filtered out (`status === "cancelled"` → skip)
 
 ### Multi-calendar
-- V1: primary calendar only. Reduces complexity and avoids noisy calendars.
-- Later: allow selecting which calendars to include.
+- `calendar-sync` fetches the user's calendar list and queries events from all selected/readable calendars (owner, writer, reader roles), including shared Family calendars.
+- Primary calendar is always included even if `selected` is false.
+- Events from all calendars are merged, sorted by start time, and capped at 20 blocks.
+- Primary-only was insufficient for real use — the user's actual events were on a shared Family calendar, causing Today to show no events.
+- If one secondary calendar fetch fails, remaining calendars are still queried. Only a complete failure returns `google_api_error`.
 
 ---
 
@@ -494,18 +497,21 @@ This lets the Guide say "I see you have a dentist appointment at 2" with confide
 ### Phase E — Edge Function: `calendar-sync` ✓
 - [x] Create Edge Function `supabase/functions/calendar-sync/index.ts`
 - [x] Reads tokens from `google_tokens`, refreshes if expired (PKCE, no client secret)
-- [x] Fetches today's events from Google Calendar API (primary calendar, `singleEvents=true`)
+- [x] Fetches today's events from all selected/readable Google Calendars (including shared calendars)
 - [x] Maps Google events to `ScheduleBlock[]` — title, time, duration, type only (no descriptions, attendees, links)
 - [x] Returns `{ connected, blocks, source, date, error? }` — never returns raw tokens or full event payloads
 - [x] Handles: not_connected, reauth_required, google_api_error, config missing, malformed response
 - [ ] Deploy function (manual: `supabase functions deploy calendar-sync`)
 - [ ] Test end-to-end (requires deployed `google-auth-callback` + app-side OAuth from Phase G)
 
-### Phase F — App Integration
-- [ ] Update `useSchedule()` to optionally fetch from `calendar-sync` Edge Function
-- [ ] Maintain fallback to `DEFAULT_SCHEDULE` when not connected
-- [ ] Add connection status check (call `get_calendar_connection_status` RPC or infer from `calendar-sync` response)
-- [ ] No UI changes to ScheduleCard — it already renders `ScheduleBlock[]`
+### Phase F — App Integration ✓
+- [x] Updated `useSchedule()` to fetch from `calendar-sync` Edge Function when authenticated
+- [x] Falls back to local/default schedule when not connected or sync returns an error
+- [x] Connected + empty blocks is treated as a real empty day (not fallback) — ScheduleCard shows "No calendar events today"
+- [x] Google blocks held in memory only — never persisted to AsyncStorage
+- [x] Exposes `source` ("default" | "local" | "google") for downstream consumers
+- [x] ScheduleCard handles empty blocks array with a graceful empty state
+- [ ] Full on-device validation (manual: connect Google → verify Today shows real calendar events)
 
 ### Phase G — OAuth Flow in App ✓
 - [x] Add `scheme` to `app.json`: reversed Google client ID (`com.googleusercontent.apps.<client-id-prefix>`). Prior attempts with `studiohour://` and `com.studiohour.app://` were both rejected by Google.
@@ -519,8 +525,19 @@ This lets the Guide say "I see you have a dentist appointment at 2" with confide
 - [ ] Native rebuild required (`npx expo run:android`) to pick up new native modules and scheme
 - [ ] On-device test: tap Connect → Google consent → verify `connected: true` response
 
+### Phase G+ — Settings Surface & Sync Now ✓
+- [x] Settings promoted from temporary Guide modal to permanent app-level surface at `src/components/settings/`
+- [x] Google Calendar integration moved out of `src/components/guide/` — Settings is the permanent home for integrations
+- [x] Settings entry point: gear icon in Guide header (no sixth tab)
+- [x] CalendarConnectionCard now includes "Sync now" button when connected
+- [x] Sync now calls `calendar-sync` and shows safe status: event count, empty day, error, reauth needed
+- [x] Sync now triggers `useSchedule` re-fetch via module-level sync signal — Today updates immediately
+- [x] Footer: "More settings will live here as Studio Hour grows."
+- [x] Old guide-location files removed
+
 ### Phase H — Validation
 - [ ] End-to-end test: connect Google → see real calendar events on Today screen
+- [ ] Test Sync now → verify Today updates with fresh calendar data
 - [ ] Verify Guide receives real schedule context
 - [ ] Test fallback: disconnect Google → app falls back to seed schedule
 - [ ] Test token expiry: force-expire access token → verify transparent refresh
@@ -566,9 +583,9 @@ Completed: 2026-05-27
 
 4. **Token encryption** — Need to determine if Supabase Vault is available on the current plan. If not, application-level encryption adds complexity to the Edge Functions.
 
-5. **Timezone handling** — `calendar-sync` passes a `timeZone` parameter to Google Calendar `events.list`, which controls the date window and the timezone of returned `dateTime` values. Defaults to `America/Los_Angeles`. Configurable via the `STUDIO_HOUR_TIME_ZONE` env var (IANA timezone string). The app should later send the device's local date explicitly; for V1 the server default is sufficient for a California-based user.
+5. **Timezone handling** — `calendar-sync` builds RFC3339 timestamps with timezone offset for `timeMin`/`timeMax` (e.g. `2026-05-27T00:00:00-07:00`). The offset is derived at runtime from the configured IANA timezone using `Intl.DateTimeFormat` so it respects DST. `timeMax` uses exclusive next-day midnight (`2026-05-28T00:00:00-07:00`). A `timeZone` query param is also passed so Google returns event times in the local timezone. Defaults to `America/Los_Angeles`, configurable via `STUDIO_HOUR_TIME_ZONE` env var. Prior versions sent timestamps without offset (`T00:00:00` with no `Z` or `±HH:MM`), which caused Google API 400 errors.
 
-6. **Multi-calendar visibility** — V1 uses primary calendar only. Some users split personal/work across calendars. This is a future concern, not a V1 blocker.
+6. **Multi-calendar visibility** — Resolved. `calendar-sync` now queries all selected/readable calendars via the calendarList API. Primary-only was insufficient because the user's real events were on a shared Family calendar.
 
 7. **Package approval** — OAuth flow requires installing `expo-auth-session` and `expo-crypto`. Both need explicit approval before Phase G. Installing triggers a native rebuild (`expo run:android` again).
 

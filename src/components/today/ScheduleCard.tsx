@@ -19,6 +19,18 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function ScheduleCard({ blocks }: { blocks: ScheduleBlock[] }) {
+  if (blocks.length === 0) {
+    return (
+      <Card>
+        <View style={styles.header}>
+          <Eyebrow>today's plan</Eyebrow>
+        </View>
+        <Text style={styles.emptyTitle}>No calendar events today</Text>
+        <Text style={styles.emptySubtitle}>Your studio time is open.</Text>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <View style={styles.header}>
@@ -129,5 +141,17 @@ const styles = StyleSheet.create({
     color: colors.lavender,
     marginTop: 3,
     lineHeight: 17,
+  },
+  emptyTitle: {
+    fontFamily: fonts.medium,
+    fontSize: 14.5,
+    color: colors.cream,
+    marginBottom: 4,
+  },
+  emptySubtitle: {
+    fontFamily: fonts.regular,
+    fontStyle: "italic",
+    fontSize: 13,
+    color: colors.lavender,
   },
 });

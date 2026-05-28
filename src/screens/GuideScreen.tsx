@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Eyebrow from "../components/shared/Eyebrow";
 import PromptStack from "../components/guide/PromptStack";
-import SettingsModal from "../components/guide/SettingsModal";
+import SettingsModal from "../components/settings/SettingsModal";
 import Composer from "../components/guide/Composer";
 import { useGuide } from "../hooks/useGuide";
 import { useCheckIn } from "../hooks/useCheckIn";

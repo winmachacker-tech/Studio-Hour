@@ -17,9 +17,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-const GOOGLE_CALENDAR_EVENTS_URL =
-  "https://www.googleapis.com/calendar/v3/calendars/primary/events";
+const GOOGLE_CALENDAR_LIST_URL =
+  "https://www.googleapis.com/calendar/v3/users/me/calendarList";
+const GOOGLE_CALENDAR_EVENTS_BASE =
+  "https://www.googleapis.com/calendar/v3/calendars";
 const DEFAULT_TIME_ZONE = "America/Los_Angeles";
+const MAX_BLOCKS = 20;
+const ALLOWED_ROLES = new Set(["owner", "writer", "reader"]);
 
 // ── HTTP helpers ──────────────────────────────────────────────────────
 
@@ -71,6 +75,33 @@ function todayString(): string {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function getUtcOffsetForDate(dateStr: string, tz: string): string {
+  const probe = new Date(`${dateStr}T12:00:00Z`);
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    timeZoneName: "shortOffset",
+  });
+  const parts = fmt.formatToParts(probe);
+  const tzPart = parts.find((p) => p.type === "timeZoneName");
+  if (!tzPart) return "-07:00";
+  const raw = tzPart.value; // e.g. "GMT-7" or "GMT-8"
+  const match = raw.match(/GMT([+-]?)(\d{1,2})(?::(\d{2}))?/);
+  if (!match) return "-07:00";
+  const sign = match[1] === "+" ? "+" : "-";
+  const hours = match[2].padStart(2, "0");
+  const mins = match[3] ?? "00";
+  return `${sign}${hours}:${mins}`;
+}
+
+function nextDay(dateStr: string): string {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const dd = String(d.getUTCDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
 }
 
@@ -383,30 +414,28 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ── Fetch Google Calendar events ───────────────────────────────────
+  // ── Build time bounds ────────────────────────────────────────────────
 
   const timeZone =
     Deno.env.get("STUDIO_HOUR_TIME_ZONE") || DEFAULT_TIME_ZONE;
-  const timeMin = `${date}T00:00:00`;
-  const timeMax = `${date}T23:59:59`;
+  const offset = getUtcOffsetForDate(date, timeZone);
+  const timeMin = `${date}T00:00:00${offset}`;
+  const timeMax = `${nextDay(date)}T00:00:00${getUtcOffsetForDate(nextDay(date), timeZone)}`;
 
-  const params = new URLSearchParams({
-    timeMin,
-    timeMax,
-    timeZone,
-    singleEvents: "true",
-    orderBy: "startTime",
-    maxResults: "20",
-  });
+  console.log(
+    `[calendar-sync] bounds date=${date} tz=${timeZone} timeMin=${timeMin} timeMax=${timeMax}`
+  );
 
-  let calRes: Response;
+  // ── Fetch calendar list ────────────────────────────────────────────
+
+  let listRes: Response;
   try {
-    calRes = await fetch(`${GOOGLE_CALENDAR_EVENTS_URL}?${params}`, {
+    listRes = await fetch(GOOGLE_CALENDAR_LIST_URL, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    console.error(`[calendar-sync] calendar_fetch_failed: ${msg}`);
+    console.error(`[calendar-sync] calendarList_fetch_failed: ${msg}`);
     return json({
       connected: true,
       blocks: [],
@@ -416,9 +445,9 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (calRes.status === 401 || calRes.status === 403) {
+  if (listRes.status === 401 || listRes.status === 403) {
     console.error(
-      `[calendar-sync] calendar_auth_rejected status=${calRes.status}`
+      `[calendar-sync] calendarList_auth_rejected status=${listRes.status}`
     );
     return json({
       connected: true,
@@ -429,9 +458,9 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  if (!calRes.ok) {
+  if (!listRes.ok) {
     console.error(
-      `[calendar-sync] calendar_api_error status=${calRes.status}`
+      `[calendar-sync] calendarList_api_error status=${listRes.status}`
     );
     return json({
       connected: true,
@@ -442,12 +471,19 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  const calData = (await calRes.json().catch(() => null)) as {
-    items?: GoogleEvent[];
+  interface CalendarEntry {
+    id?: string;
+    primary?: boolean;
+    selected?: boolean;
+    accessRole?: string;
+  }
+
+  const listData = (await listRes.json().catch(() => null)) as {
+    items?: CalendarEntry[];
   } | null;
 
-  if (!calData || !Array.isArray(calData.items)) {
-    console.error("[calendar-sync] calendar_response_malformed");
+  if (!listData || !Array.isArray(listData.items)) {
+    console.error("[calendar-sync] calendarList_response_malformed");
     return json({
       connected: true,
       blocks: [],
@@ -457,15 +493,119 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // ── Map events to ScheduleBlocks ───────────────────────────────────
-
-  const blocks: ScheduleBlock[] = [];
-  for (const event of calData.items) {
-    const block = mapEvent(event);
-    if (block) blocks.push(block);
+  const calendarIds: string[] = [];
+  for (const cal of listData.items) {
+    if (!cal.id) continue;
+    const roleOk = ALLOWED_ROLES.has(cal.accessRole ?? "");
+    if (cal.primary || (cal.selected && roleOk)) {
+      calendarIds.push(cal.id);
+    }
   }
 
-  console.log(`[calendar-sync] returning ${blocks.length} blocks for ${date}`);
+  console.log(
+    `[calendar-sync] calendars total=${listData.items.length} selected=${calendarIds.length}`
+  );
+
+  if (calendarIds.length === 0) {
+    return json({
+      connected: true,
+      blocks: [],
+      source: "google",
+      date,
+    });
+  }
+
+  // ── Fetch events from each selected calendar ───────────────────────
+
+  const allBlocks: ScheduleBlock[] = [];
+  let anySuccess = false;
+
+  for (let i = 0; i < calendarIds.length; i++) {
+    const calId = calendarIds[i];
+    const eventsUrl = `${GOOGLE_CALENDAR_EVENTS_BASE}/${encodeURIComponent(calId)}/events`;
+    const params = new URLSearchParams({
+      timeMin,
+      timeMax,
+      timeZone,
+      singleEvents: "true",
+      orderBy: "startTime",
+      maxResults: String(MAX_BLOCKS),
+    });
+
+    let evtRes: Response;
+    try {
+      evtRes = await fetch(`${eventsUrl}?${params}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error(`[calendar-sync] events_fetch_failed cal=${i}: ${msg}`);
+      continue;
+    }
+
+    if (evtRes.status === 401 || evtRes.status === 403) {
+      console.error(
+        `[calendar-sync] events_auth_rejected cal=${i} status=${evtRes.status}`
+      );
+      if (i === 0 && calendarIds.length === 1) {
+        return json({
+          connected: true,
+          blocks: [],
+          source: "google",
+          date,
+          error: "reauth_required",
+        });
+      }
+      continue;
+    }
+
+    if (!evtRes.ok) {
+      console.error(
+        `[calendar-sync] events_api_error cal=${i} status=${evtRes.status}`
+      );
+      continue;
+    }
+
+    const evtData = (await evtRes.json().catch(() => null)) as {
+      items?: GoogleEvent[];
+    } | null;
+
+    if (!evtData || !Array.isArray(evtData.items)) {
+      console.error(`[calendar-sync] events_response_malformed cal=${i}`);
+      continue;
+    }
+
+    anySuccess = true;
+    for (const event of evtData.items) {
+      const block = mapEvent(event);
+      if (block) allBlocks.push(block);
+    }
+  }
+
+  if (!anySuccess && calendarIds.length > 0) {
+    console.error("[calendar-sync] all_calendar_fetches_failed");
+    return json({
+      connected: true,
+      blocks: [],
+      source: "google",
+      date,
+      error: "google_api_error",
+    });
+  }
+
+  // ── Sort by start time and limit ───────────────────────────────────
+
+  allBlocks.sort((a, b) => {
+    if (a.time === "all day") return -1;
+    if (b.time === "all day") return 1;
+    return a.time.localeCompare(b.time);
+  });
+
+  const blocks = allBlocks.slice(0, MAX_BLOCKS);
+
+  console.log(
+    `[calendar-sync] returning ${blocks.length} blocks for ${date}`
+  );
 
   return json({
     connected: true,

@@ -52,6 +52,10 @@ export default function SettingsModal({
           <View style={styles.section}>
             <CalendarConnectionCard />
           </View>
+
+          <Text style={styles.footer}>
+            More settings will live here as Studio Hour grows.
+          </Text>
         </ScrollView>
       </View>
     </Modal>
@@ -102,5 +106,14 @@ const styles = StyleSheet.create({
   },
   section: {
     marginTop: 12,
+  },
+  footer: {
+    fontFamily: fonts.regular,
+    fontStyle: "italic",
+    fontSize: 12,
+    color: colors.lavender,
+    opacity: 0.5,
+    textAlign: "center",
+    marginTop: 32,
   },
 });
