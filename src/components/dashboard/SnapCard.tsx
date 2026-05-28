@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import Eyebrow from "../shared/Eyebrow";
 import { colors, fonts } from "../../lib/theme";
 
@@ -8,21 +8,40 @@ export default function SnapCard({
   eyebrowColor,
   headline,
   meta,
+  onPress,
+  accessibilityLabel,
 }: {
   eyebrow: string;
   eyebrowColor?: string;
   headline: string;
   meta: string;
+  onPress?: () => void;
+  accessibilityLabel?: string;
 }) {
-  return (
-    <View style={styles.card}>
+  const body = (
+    <>
       <Eyebrow color={eyebrowColor}>{eyebrow}</Eyebrow>
       <Text style={styles.headline} numberOfLines={2}>
         {headline}
       </Text>
       <Text style={styles.meta}>{meta}</Text>
-    </View>
+    </>
   );
+
+  if (onPress) {
+    return (
+      <Pressable
+        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel ?? `Open ${eyebrow}`}
+      >
+        {body}
+      </Pressable>
+    );
+  }
+
+  return <View style={styles.card}>{body}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -35,6 +54,10 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     backgroundColor: "rgba(37, 22, 64, 0.45)",
     justifyContent: "space-between",
+  },
+  cardPressed: {
+    borderColor: "rgba(17, 153, 153, 0.4)",
+    backgroundColor: "rgba(37, 22, 64, 0.6)",
   },
   headline: {
     fontFamily: fonts.regular,

@@ -93,18 +93,22 @@ function ideasSnap(ideas: Idea[]): { headline: string; meta: string } {
   };
 }
 
+export type SnapTile = "Today" | "Open Work" | "Ideas" | "Guide";
+
 export default function SnapGrid({
   checkIn,
   blocks,
   workItems,
   ideas,
   guideMessages = [],
+  onTilePress,
 }: {
   checkIn: CheckIn;
   blocks: ScheduleBlock[];
   workItems: WorkItem[];
   ideas: Idea[];
   guideMessages?: GuideMessage[];
+  onTilePress?: (tile: SnapTile) => void;
 }) {
   const today = todaySnap(checkIn, blocks);
   const work = workSnap(workItems);
@@ -119,19 +123,31 @@ export default function SnapGrid({
           eyebrowColor={colors.teal}
           headline={today.headline}
           meta={today.meta}
+          onPress={onTilePress ? () => onTilePress("Today") : undefined}
+          accessibilityLabel="Open Today"
         />
-        <SnapCard eyebrow="open work" headline={work.headline} meta={work.meta} />
+        <SnapCard
+          eyebrow="open work"
+          headline={work.headline}
+          meta={work.meta}
+          onPress={onTilePress ? () => onTilePress("Open Work") : undefined}
+          accessibilityLabel="Open Work"
+        />
       </View>
       <View style={styles.row}>
         <SnapCard
           eyebrow="ideas"
           headline={ideasData.headline}
           meta={ideasData.meta}
+          onPress={onTilePress ? () => onTilePress("Ideas") : undefined}
+          accessibilityLabel="Open Ideas"
         />
         <SnapCard
           eyebrow="guide"
           headline={guide.headline}
           meta={guide.meta}
+          onPress={onTilePress ? () => onTilePress("Guide") : undefined}
+          accessibilityLabel="Open Guide"
         />
       </View>
     </View>

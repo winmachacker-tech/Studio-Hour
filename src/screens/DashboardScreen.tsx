@@ -1,8 +1,9 @@
 import React from "react";
 import { ScrollView, View, Text, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation, NavigationProp } from "@react-navigation/native";
 import Eyebrow from "../components/shared/Eyebrow";
-import SnapGrid from "../components/dashboard/SnapGrid";
+import SnapGrid, { SnapTile } from "../components/dashboard/SnapGrid";
 import { useCheckIn } from "../hooks/useCheckIn";
 import { useSchedule } from "../hooks/useSchedule";
 import { useTasks } from "../hooks/useTasks";
@@ -12,8 +13,17 @@ import { useGuide } from "../hooks/useGuide";
 import { formatDateLine, getCalendarDay } from "../lib/dates";
 import { colors, fonts } from "../lib/theme";
 
+type MainTabParamList = {
+  Today: undefined;
+  "Open Work": undefined;
+  Dashboard: undefined;
+  Ideas: undefined;
+  Guide: undefined;
+};
+
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NavigationProp<MainTabParamList>>();
   const today = getCalendarDay();
   const { checkIn } = useCheckIn();
   const { blocks } = useSchedule();
@@ -21,6 +31,10 @@ export default function DashboardScreen() {
   const { items: ideas } = useIdeas();
   const { doneCount, total } = useRituals();
   const { messages: guideMessages } = useGuide();
+
+  const handleTilePress = (tile: SnapTile) => {
+    navigation.navigate(tile);
+  };
 
   const followUps = workItems.filter(
     (w) => w.status === "Needs Follow-Up"
@@ -50,6 +64,7 @@ export default function DashboardScreen() {
         workItems={workItems}
         ideas={ideas}
         guideMessages={guideMessages}
+        onTilePress={handleTilePress}
       />
 
       {checkIn.completed && (

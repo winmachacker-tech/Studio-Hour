@@ -19,6 +19,28 @@ export function useTasks() {
     SEED_WORK_ITEMS
   );
 
+  const addWorkItem = useCallback(
+    (
+      item: Omit<WorkItem, "id" | "createdAt" | "updatedAt" | "status"> & {
+        status?: WorkStatus;
+      }
+    ) => {
+      const now = new Date().toISOString();
+      const id = `work-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      setItems((prev) => [
+        {
+          ...item,
+          status: item.status ?? "Ready",
+          id,
+          createdAt: now,
+          updatedAt: now,
+        },
+        ...prev,
+      ]);
+    },
+    [setItems]
+  );
+
   const toggleDone = useCallback(
     (id: string) => {
       setItems((prev) =>
@@ -55,5 +77,12 @@ export function useTasks() {
 
   const activeCount = items.filter((i) => i.status !== "Done").length;
 
-  return { items, toggleDone, cycleStatus, activeCount, isHydrated };
+  return {
+    items,
+    addWorkItem,
+    toggleDone,
+    cycleStatus,
+    activeCount,
+    isHydrated,
+  };
 }

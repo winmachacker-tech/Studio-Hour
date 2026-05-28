@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { ScrollView, View, Text, StyleSheet } from "react-native";
+import { ScrollView, View, Text, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Eyebrow from "../components/shared/Eyebrow";
 import FilterRow from "../components/shared/FilterRow";
 import WorkCard from "../components/work/WorkCard";
+import AddWorkForm from "../components/work/AddWorkForm";
 import { useTasks } from "../hooks/useTasks";
 import { colors, fonts } from "../lib/theme";
 
@@ -17,8 +18,14 @@ const WORDS = [
 export default function OpenWorkScreen() {
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState("All");
-  const { items, toggleDone, cycleStatus, activeCount, isHydrated } =
-    useTasks();
+  const [showForm, setShowForm] = useState(false);
+  const {
+    items,
+    addWorkItem,
+    toggleDone,
+    cycleStatus,
+    isHydrated,
+  } = useTasks();
 
   const shown =
     filter === "All" ? items : items.filter((t) => t.group === filter);
@@ -28,47 +35,75 @@ export default function OpenWorkScreen() {
     : "";
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[
-        styles.content,
-        { paddingTop: insets.top + 20, paddingBottom: 130 },
-      ]}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.header}>
-        <Eyebrow>open work</Eyebrow>
-        <Text style={styles.title}>Ready when you are.</Text>
-        {countText !== "" && <Text style={styles.subtitle}>{countText}</Text>}
-      </View>
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + 20, paddingBottom: 130 },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Eyebrow>open work</Eyebrow>
+          <Text style={styles.title}>Ready when you are.</Text>
+          {countText !== "" && <Text style={styles.subtitle}>{countText}</Text>}
+        </View>
 
-      {items.length > 0 && (
-        <FilterRow filters={FILTERS} active={filter} onChange={setFilter} />
-      )}
+        {items.length > 0 && (
+          <FilterRow filters={FILTERS} active={filter} onChange={setFilter} />
+        )}
 
-      {isHydrated && items.length === 0 && (
-        <Text style={styles.emptyText}>No open work yet.</Text>
-      )}
-
-      {isHydrated &&
-        shown.map((item) => (
-          <WorkCard
-            key={item.id}
-            item={item}
-            onToggleDone={() => toggleDone(item.id)}
-            onCycleStatus={() => cycleStatus(item.id)}
+        {showForm && (
+          <AddWorkForm
+            onAdd={addWorkItem}
+            onClose={() => setShowForm(false)}
           />
-        ))}
+        )}
 
-      <Text style={styles.foot}>— done is a kind of rest, too.</Text>
-    </ScrollView>
+        {isHydrated && items.length === 0 && !showForm && (
+          <>
+            <Text style={styles.emptyText}>No open work yet.</Text>
+            <Text style={styles.emptyHint}>
+              Add a piece, project, commission, idea, or follow-up you want to
+              keep moving.
+            </Text>
+          </>
+        )}
+
+        {isHydrated &&
+          shown.map((item) => (
+            <WorkCard
+              key={item.id}
+              item={item}
+              onToggleDone={() => toggleDone(item.id)}
+              onCycleStatus={() => cycleStatus(item.id)}
+            />
+          ))}
+
+        <Text style={styles.foot}>— done is a kind of rest, too.</Text>
+      </ScrollView>
+
+      {!showForm && (
+        <Pressable
+          style={[styles.fab, { bottom: 90 + insets.bottom }]}
+          onPress={() => setShowForm(true)}
+          accessibilityLabel="Add work"
+        >
+          <Text style={styles.fabText}>＋  add work</Text>
+        </Pressable>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: {
+  container: {
     flex: 1,
     backgroundColor: colors.nightPlum,
+  },
+  scroll: {
+    flex: 1,
   },
   content: {
     paddingHorizontal: 22,
@@ -99,7 +134,16 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.lavender,
     marginTop: 4,
+    marginBottom: 8,
+  },
+  emptyHint: {
+    fontFamily: fonts.regular,
+    fontSize: 13.5,
+    lineHeight: 20,
+    color: colors.lavender,
+    opacity: 0.75,
     marginBottom: 12,
+    maxWidth: 320,
   },
   foot: {
     fontFamily: fonts.regular,
@@ -110,5 +154,24 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginTop: 22,
     marginBottom: 6,
+  },
+  fab: {
+    position: "absolute",
+    right: 22,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 999,
+    backgroundColor: colors.teal,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  fabText: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.creamWarm,
+    letterSpacing: 0.2,
   },
 });

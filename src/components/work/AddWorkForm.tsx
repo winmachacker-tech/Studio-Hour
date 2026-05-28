@@ -1,0 +1,223 @@
+import React, { useState } from "react";
+import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
+import Card from "../shared/Card";
+import Eyebrow from "../shared/Eyebrow";
+import { colors, fonts } from "../../lib/theme";
+import type { WorkGroup, EnergyLevel, WorkStatus } from "../../lib/types";
+
+const GROUPS: WorkGroup[] = ["Murals", "Studio art", "Design", "Leads"];
+const ENERGY_LEVELS: EnergyLevel[] = ["High focus", "Medium energy", "Low lift"];
+
+export default function AddWorkForm({
+  onAdd,
+  onClose,
+}: {
+  onAdd: (item: {
+    title: string;
+    project: string;
+    group: WorkGroup;
+    energy: EnergyLevel;
+    note: string;
+    status?: WorkStatus;
+  }) => void;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [project, setProject] = useState("");
+  const [group, setGroup] = useState<WorkGroup>("Murals");
+  const [energy, setEnergy] = useState<EnergyLevel>("Medium energy");
+  const [note, setNote] = useState("");
+
+  const submit = () => {
+    if (!title.trim()) return;
+    onAdd({
+      title: title.trim(),
+      project: project.trim(),
+      group,
+      energy,
+      note: note.trim(),
+    });
+    setTitle("");
+    setProject("");
+    setGroup("Murals");
+    setEnergy("Medium energy");
+    setNote("");
+    onClose();
+  };
+
+  return (
+    <Card>
+      <View style={styles.header}>
+        <Eyebrow>new work</Eyebrow>
+        <Pressable onPress={onClose}>
+          <Text style={styles.cancel}>cancel</Text>
+        </Pressable>
+      </View>
+
+      <TextInput
+        style={styles.input}
+        placeholder="What are you working on?"
+        placeholderTextColor={colors.lavender}
+        value={title}
+        onChangeText={setTitle}
+        autoFocus
+        returnKeyType="next"
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Project or client"
+        placeholderTextColor={colors.lavender}
+        value={project}
+        onChangeText={setProject}
+        returnKeyType="next"
+      />
+
+      <Text style={styles.fieldLabel}>group</Text>
+      <View style={styles.pillRow}>
+        {GROUPS.map((g) => (
+          <Pressable
+            key={g}
+            style={[styles.pill, group === g && styles.pillActive]}
+            onPress={() => setGroup(g)}
+          >
+            <Text
+              style={[styles.pillText, group === g && styles.pillTextActive]}
+            >
+              {g}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Text style={styles.fieldLabel}>energy</Text>
+      <View style={styles.pillRow}>
+        {ENERGY_LEVELS.map((e) => (
+          <Pressable
+            key={e}
+            style={[styles.pill, energy === e && styles.pillActive]}
+            onPress={() => setEnergy(e)}
+          >
+            <Text
+              style={[styles.pillText, energy === e && styles.pillTextActive]}
+            >
+              {e}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <TextInput
+        style={[styles.input, styles.noteInput]}
+        placeholder="What's the next small move?"
+        placeholderTextColor={colors.lavender}
+        value={note}
+        onChangeText={setNote}
+        returnKeyType="done"
+        onSubmitEditing={submit}
+      />
+
+      <Pressable
+        style={[styles.saveBtn, !title.trim() && styles.saveBtnDisabled]}
+        onPress={submit}
+        disabled={!title.trim()}
+      >
+        <Text style={styles.saveBtnText}>Save</Text>
+        <Text style={styles.saveBtnArrow}>→</Text>
+      </Pressable>
+    </Card>
+  );
+}
+
+const styles = StyleSheet.create({
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  cancel: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    color: colors.teal,
+    letterSpacing: 0.4,
+  },
+  input: {
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.lineStrong,
+    backgroundColor: "rgba(15, 8, 22, 0.5)",
+    color: colors.cream,
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    marginBottom: 10,
+  },
+  noteInput: {
+    fontSize: 13,
+    fontStyle: "italic",
+  },
+  fieldLabel: {
+    fontFamily: fonts.semiBold,
+    fontSize: 10,
+    letterSpacing: 1.4,
+    textTransform: "uppercase",
+    color: colors.lavender,
+    opacity: 0.8,
+    marginTop: 2,
+    marginBottom: 8,
+  },
+  pillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 12,
+  },
+  pill: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  pillActive: {
+    borderColor: "rgba(17, 153, 153, 0.4)",
+    backgroundColor: "rgba(17, 153, 153, 0.12)",
+  },
+  pillText: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    color: colors.lavender,
+    letterSpacing: 0.3,
+  },
+  pillTextActive: {
+    color: colors.teal,
+  },
+  saveBtn: {
+    marginTop: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(17, 153, 153, 0.5)",
+    backgroundColor: "rgba(17, 153, 153, 0.14)",
+  },
+  saveBtnDisabled: {
+    opacity: 0.4,
+  },
+  saveBtnText: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.cream,
+    letterSpacing: 0.2,
+  },
+  saveBtnArrow: {
+    fontSize: 14,
+    color: colors.teal,
+  },
+});
