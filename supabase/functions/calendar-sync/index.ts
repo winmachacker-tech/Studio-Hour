@@ -105,13 +105,18 @@ function nextDay(dateStr: string): string {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function formatTime(isoString: string): string {
+function formatTime(isoString: string, timeZone: string): string {
   const d = new Date(isoString);
-  const h = d.getHours();
-  const m = d.getMinutes();
-  const suffix = h >= 12 ? "pm" : "am";
-  const displayH = h === 0 ? 12 : h > 12 ? h - 12 : h;
-  return m === 0 ? `${displayH}${suffix}` : `${displayH}:${String(m).padStart(2, "0")}${suffix}`;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).formatToParts(d);
+  const hour = parts.find((p) => p.type === "hour")?.value ?? "12";
+  const minute = parts.find((p) => p.type === "minute")?.value ?? "00";
+  const period = (parts.find((p) => p.type === "dayPeriod")?.value ?? "am").toLowerCase();
+  return minute === "00" ? `${hour}${period}` : `${hour}:${minute}${period}`;
 }
 
 function formatDuration(startIso: string, endIso: string): string {
@@ -174,14 +179,14 @@ interface ScheduleBlock {
   type: BlockType;
 }
 
-function mapEvent(event: GoogleEvent): ScheduleBlock | null {
+function mapEvent(event: GoogleEvent, timeZone: string): ScheduleBlock | null {
   if (event.status === "cancelled") return null;
 
   const isAllDay = !event.start?.dateTime && !!event.start?.date;
   const startIso = event.start?.dateTime;
   const endIso = event.end?.dateTime;
 
-  const time = isAllDay ? "all day" : startIso ? formatTime(startIso) : "—";
+  const time = isAllDay ? "all day" : startIso ? formatTime(startIso, timeZone) : "—";
   const title = (event.summary ?? "Busy").slice(0, 60);
 
   let meta = "";
@@ -517,7 +522,7 @@ Deno.serve(async (req: Request) => {
 
   // ── Fetch events from each selected calendar ───────────────────────
 
-  const allBlocks: ScheduleBlock[] = [];
+  const allEntries: { block: ScheduleBlock; startMs: number }[] = [];
   let anySuccess = false;
 
   for (let i = 0; i < calendarIds.length; i++) {
@@ -577,8 +582,13 @@ Deno.serve(async (req: Request) => {
 
     anySuccess = true;
     for (const event of evtData.items) {
-      const block = mapEvent(event);
-      if (block) allBlocks.push(block);
+      const block = mapEvent(event, timeZone);
+      if (block) {
+        const startMs = event.start?.dateTime
+          ? new Date(event.start.dateTime).getTime()
+          : 0;
+        allEntries.push({ block, startMs });
+      }
     }
   }
 
@@ -593,15 +603,15 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // ── Sort by start time and limit ───────────────────────────────────
+  // ── Sort by absolute start time and limit ─────────────────────────
 
-  allBlocks.sort((a, b) => {
-    if (a.time === "all day") return -1;
-    if (b.time === "all day") return 1;
-    return a.time.localeCompare(b.time);
+  allEntries.sort((a, b) => {
+    if (a.block.time === "all day") return -1;
+    if (b.block.time === "all day") return 1;
+    return a.startMs - b.startMs;
   });
 
-  const blocks = allBlocks.slice(0, MAX_BLOCKS);
+  const blocks = allEntries.slice(0, MAX_BLOCKS).map((e) => e.block);
 
   console.log(
     `[calendar-sync] returning ${blocks.length} blocks for ${date}`
