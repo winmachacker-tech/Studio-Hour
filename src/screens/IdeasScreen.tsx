@@ -38,13 +38,19 @@ export default function IdeasScreen() {
           </Text>
         </View>
 
-        <FilterRow filters={FILTERS} active={filter} onChange={setFilter} />
+        {items.length > 0 && (
+          <FilterRow filters={FILTERS} active={filter} onChange={setFilter} />
+        )}
 
         {showForm && (
           <AddIdeaForm
             onAdd={addIdea}
             onClose={() => setShowForm(false)}
           />
+        )}
+
+        {isHydrated && items.length === 0 && !showForm && (
+          <Text style={styles.emptyText}>No ideas yet.</Text>
         )}
 
         {isHydrated &&
@@ -98,6 +104,15 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.lavender,
     maxWidth: 300,
+  },
+  emptyText: {
+    fontFamily: fonts.regular,
+    fontStyle: "italic",
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.lavender,
+    marginTop: 4,
+    marginBottom: 12,
   },
   fab: {
     position: "absolute",

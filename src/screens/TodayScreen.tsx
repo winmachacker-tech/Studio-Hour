@@ -46,7 +46,7 @@ export default function TodayScreen() {
 
       <ScheduleCard blocks={blocks} />
 
-      {ritualsHydrated && (
+      {ritualsHydrated && rituals.length > 0 && (
         <RitualsCard
           rituals={rituals}
           doneCount={doneCount}

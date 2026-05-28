@@ -23,7 +23,9 @@ export default function OpenWorkScreen() {
   const shown =
     filter === "All" ? items : items.filter((t) => t.group === filter);
 
-  const countText = `${WORDS[items.length] ?? items.length} thing${items.length === 1 ? "" : "s"} in motion — not all for today. Pick by energy, not by guilt.`;
+  const countText = items.length > 0
+    ? `${WORDS[items.length] ?? items.length} thing${items.length === 1 ? "" : "s"} in motion — not all for today. Pick by energy, not by guilt.`
+    : "";
 
   return (
     <ScrollView
@@ -37,10 +39,16 @@ export default function OpenWorkScreen() {
       <View style={styles.header}>
         <Eyebrow>open work</Eyebrow>
         <Text style={styles.title}>Ready when you are.</Text>
-        <Text style={styles.subtitle}>{countText}</Text>
+        {countText !== "" && <Text style={styles.subtitle}>{countText}</Text>}
       </View>
 
-      <FilterRow filters={FILTERS} active={filter} onChange={setFilter} />
+      {items.length > 0 && (
+        <FilterRow filters={FILTERS} active={filter} onChange={setFilter} />
+      )}
+
+      {isHydrated && items.length === 0 && (
+        <Text style={styles.emptyText}>No open work yet.</Text>
+      )}
 
       {isHydrated &&
         shown.map((item) => (
@@ -83,6 +91,15 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: colors.lavender,
     maxWidth: 300,
+  },
+  emptyText: {
+    fontFamily: fonts.regular,
+    fontStyle: "italic",
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.lavender,
+    marginTop: 4,
+    marginBottom: 12,
   },
   foot: {
     fontFamily: fonts.regular,
