@@ -447,25 +447,25 @@ This shape is consumed by the Edge Function's `buildSystemPrompt()` as:
 Today's schedule: 9:00 — Settle in. (now); 10:00 — Protected art time (protected); …
 ```
 
-### What changes with calendar integration
+### What changes with calendar integration (implemented)
 
-**Nothing in the interface.** The `useSchedule()` hook returns `ScheduleBlock[]` regardless of source. The Guide receives the same shape whether blocks come from seed data or Google Calendar.
+The `useSchedule()` hook returns `ScheduleBlock[]` regardless of source. The Guide receives the same shape whether blocks come from seed data or Google Calendar.
 
-The only difference is the content is real.
-
-### Optional future enhancement
-
-Add a `source` field to the context so the Guide knows the schedule is real vs. seed:
+**`scheduleSource` is now included in the context** so the Guide knows whether the schedule is real calendar data or fallback:
 ```typescript
 scheduleBlocks: blocks.map((b) => ({
   time: b.time,
   title: b.title,
   type: b.type,
 })),
-scheduleSource: "google_calendar" | "default"
+scheduleSource: "google" | "local" | "default"
 ```
 
-This lets the Guide say "I see you have a dentist appointment at 2" with confidence vs. treating seed data as a rough template. Not required for V1 — the Guide works either way.
+When `scheduleSource` is `"google"`, the Edge Function's `buildSystemPrompt()` appends a one-line instruction telling Claude to treat the schedule as real fixed commitments. This lets the Guide say "I see you have a dentist appointment at 2" with confidence vs. treating seed data as a rough template.
+
+### Privacy protections
+
+Only `{ time, title, type }` are sent to Claude — no descriptions, attendees, emails, meeting links, locations, or calendar names. The `scheduleSource` field is a simple string enum, not a calendar identifier. No sensitive Google Calendar fields reach the Guide Edge Function.
 
 ---
 

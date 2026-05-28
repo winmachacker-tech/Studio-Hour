@@ -25,7 +25,7 @@ export default function GuideScreen() {
   const insets = useSafeAreaInsets();
   const { messages, isLoading, suggestions, send } = useGuide();
   const { checkIn } = useCheckIn();
-  const { blocks } = useSchedule();
+  const { blocks, source: scheduleSource } = useSchedule();
   const { items: workItems } = useTasks();
   const { items: ideas } = useIdeas();
   const { rituals } = useRituals();
@@ -56,6 +56,7 @@ export default function GuideScreen() {
         title: b.title,
         type: b.type,
       })),
+      scheduleSource,
       rituals: rituals.map((r) => ({ text: r.text, done: r.done })),
       openWorkItems: workItems
         .filter((w) => w.status !== "Done")
@@ -71,7 +72,7 @@ export default function GuideScreen() {
         platform: i.platform,
       })),
     };
-  }, [checkIn, blocks, rituals, workItems, ideas]);
+  }, [checkIn, blocks, scheduleSource, rituals, workItems, ideas]);
 
   const handleSend = useCallback(
     (message: string) => {

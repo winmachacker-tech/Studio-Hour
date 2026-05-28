@@ -52,6 +52,7 @@ interface GuideContext {
     completed: boolean;
   };
   scheduleBlocks?: { time: string; title: string; type: string }[];
+  scheduleSource?: string;
   rituals?: { text: string; done: boolean }[];
   openWorkItems?: {
     title: string;
@@ -77,6 +78,11 @@ function buildSystemPrompt(context: GuideContext): string {
       .map((b) => `${b.time} — ${b.title} (${b.type})`)
       .join("; ");
     parts.push(`Today's schedule: ${schedule}`);
+    if (context.scheduleSource === "google") {
+      parts.push(
+        "This schedule is from the user's real Google Calendar. Treat these as fixed commitments and help plan around them."
+      );
+    }
   }
 
   if (context.rituals?.length) {
