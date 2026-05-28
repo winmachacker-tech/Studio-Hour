@@ -22,7 +22,7 @@ import { supabase } from "../supabase";
 // ── Constants ────────────────────────────────────────────────────────
 
 export const GOOGLE_CALENDAR_SCOPE =
-  "https://www.googleapis.com/auth/calendar.events.readonly";
+  "https://www.googleapis.com/auth/calendar.readonly";
 
 export const GOOGLE_REDIRECT_URI =
   "com.googleusercontent.apps.666099783371-q3hlavndh63puo9m81uadn694ahq9jhr:/oauth2redirect";
