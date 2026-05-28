@@ -421,11 +421,24 @@ interface GoogleCalendarEvent {
 - Filtered out (`status === "cancelled"` → skip)
 
 ### Multi-calendar
-- `calendar-sync` fetches the user's calendar list and queries events from all selected/readable calendars (owner, writer, reader roles), including shared Family calendars.
-- Primary calendar is always included even if `selected` is false.
-- Events from all calendars are merged, sorted by start time, and capped at 20 blocks.
-- Primary-only was insufficient for real use — the user's actual events were on a shared Family calendar, causing Today to show no events.
-- If one secondary calendar fetch fails, remaining calendars are still queried. Only a complete failure returns `google_api_error`.
+- `calendar-sync` fetches the user's calendar list and queries events from **all readable calendars** — any calendar where `accessRole` is `owner`, `writer`, or `reader`. The `selected` flag from Google is ignored because many real calendars (shared, family, subscribed) have `selected: false` by default in the calendarList API.
+- Primary calendar is always included regardless of role.
+- `freeBusyReader` calendars and entries with no `id` are excluded.
+- Events from all readable calendars are merged, sorted by absolute start time, and capped at 20 blocks.
+- **History**: primary-only was insufficient (user's events were on a shared Family calendar). Then selected-only was insufficient (shared calendars often have `selected: false`). Now all readable calendars are included.
+- **Future**: Settings should let users choose which calendars Studio Hour reads, rather than reading all readable calendars by default.
+- If one calendar fetch fails, remaining calendars are still queried. Only a complete failure returns `google_api_error`.
+
+### Diagnostic logging
+- Safe diagnostic counts are logged for debugging — calendar totals, per-calendar item/mapped counts, and final block count.
+- **Never logged**: calendar names, calendar IDs, event titles, descriptions, attendees, emails, locations, meeting links, tokens, user IDs, or raw Google payloads.
+- Example log output:
+  ```
+  [calendar-sync] calendars total=5 readable=3 primaryIncluded=true
+  [calendar-sync] calendar_fetch cal=0 status=200 items=2 mapped=2
+  [calendar-sync] calendar_fetch cal=1 status=200 items=0 mapped=0
+  [calendar-sync] returning 2 blocks for 2026-05-27
+  ```
 
 ---
 

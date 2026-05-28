@@ -499,16 +499,19 @@ Deno.serve(async (req: Request) => {
   }
 
   const calendarIds: string[] = [];
+  let primaryIncluded = false;
   for (const cal of listData.items) {
     if (!cal.id) continue;
-    const roleOk = ALLOWED_ROLES.has(cal.accessRole ?? "");
-    if (cal.primary || (cal.selected && roleOk)) {
+    if (cal.primary) {
+      calendarIds.push(cal.id);
+      primaryIncluded = true;
+    } else if (ALLOWED_ROLES.has(cal.accessRole ?? "")) {
       calendarIds.push(cal.id);
     }
   }
 
   console.log(
-    `[calendar-sync] calendars total=${listData.items.length} selected=${calendarIds.length}`
+    `[calendar-sync] calendars total=${listData.items.length} readable=${calendarIds.length} primaryIncluded=${primaryIncluded}`
   );
 
   if (calendarIds.length === 0) {
@@ -544,13 +547,13 @@ Deno.serve(async (req: Request) => {
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      console.error(`[calendar-sync] events_fetch_failed cal=${i}: ${msg}`);
+      console.error(`[calendar-sync] calendar_fetch cal=${i} network_error: ${msg}`);
       continue;
     }
 
     if (evtRes.status === 401 || evtRes.status === 403) {
       console.error(
-        `[calendar-sync] events_auth_rejected cal=${i} status=${evtRes.status}`
+        `[calendar-sync] calendar_fetch cal=${i} status=${evtRes.status} auth_rejected`
       );
       if (i === 0 && calendarIds.length === 1) {
         return json({
@@ -566,7 +569,7 @@ Deno.serve(async (req: Request) => {
 
     if (!evtRes.ok) {
       console.error(
-        `[calendar-sync] events_api_error cal=${i} status=${evtRes.status}`
+        `[calendar-sync] calendar_fetch cal=${i} status=${evtRes.status}`
       );
       continue;
     }
@@ -576,11 +579,12 @@ Deno.serve(async (req: Request) => {
     } | null;
 
     if (!evtData || !Array.isArray(evtData.items)) {
-      console.error(`[calendar-sync] events_response_malformed cal=${i}`);
+      console.error(`[calendar-sync] calendar_fetch cal=${i} status=200 malformed=true`);
       continue;
     }
 
     anySuccess = true;
+    let mapped = 0;
     for (const event of evtData.items) {
       const block = mapEvent(event, timeZone);
       if (block) {
@@ -588,8 +592,13 @@ Deno.serve(async (req: Request) => {
           ? new Date(event.start.dateTime).getTime()
           : 0;
         allEntries.push({ block, startMs });
+        mapped++;
       }
     }
+
+    console.log(
+      `[calendar-sync] calendar_fetch cal=${i} status=200 items=${evtData.items.length} mapped=${mapped}`
+    );
   }
 
   if (!anySuccess && calendarIds.length > 0) {
