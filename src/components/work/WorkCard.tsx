@@ -25,6 +25,9 @@ export default function WorkCard({
   const isDone = item.status === "Done";
   const subtasks = item.subtasks ?? [];
   const doneCount = subtasks.filter((s) => s.done).length;
+  // Derive from subtasks so the bar always matches the "n/m" count shown.
+  const progressPct =
+    subtasks.length > 0 ? Math.round((doneCount / subtasks.length) * 100) : 0;
 
   const [expanded, setExpanded] = useState(false);
   const [newStep, setNewStep] = useState("");
@@ -72,6 +75,15 @@ export default function WorkCard({
           <Text style={styles.chevron}>{expanded ? "▾" : "▸"}</Text>
         )}
       </Pressable>
+
+      {subtasks.length > 0 && (
+        <View style={styles.progressRow}>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progressPct}%` }]} />
+          </View>
+          <Text style={styles.progressPct}>{progressPct}%</Text>
+        </View>
+      )}
 
       {expanded && (
         <View style={styles.steps}>
@@ -173,6 +185,32 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 11,
     color: colors.lavender,
+  },
+  progressRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 8,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.line,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.teal,
+  },
+  progressPct: {
+    fontFamily: fonts.medium,
+    fontSize: 10,
+    letterSpacing: 0.4,
+    color: colors.lavender,
+    minWidth: 30,
+    textAlign: "right",
   },
   steps: {
     marginTop: 10,
