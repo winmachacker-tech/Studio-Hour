@@ -19,6 +19,30 @@ const WORDS = [
   "Six", "Seven", "Eight", "Nine", "Ten",
 ];
 
+// ── Keyboard scroll tuning ───────────────────────────────────────────
+// KeyboardSafeScrollView (behavior="padding") makes lower fields scrollable
+// when the keyboard opens but does NOT auto-scroll the focused field into
+// view, so these fixed offsets nudge each lower form field up. Values are
+// px from the top of the scroll content, tuned per form layout.
+// See docs/open-projects-keyboard-rca.md.
+const SCROLL_Y = {
+  // Add form (has group + energy pills, so the note sits lower).
+  addGoal: 340,
+  addNote: 520,
+  // Edit form (no pills, renders at the top of the page).
+  editGoal: 340,
+  editNote: 430,
+};
+// How far above a card's bottom edge to land its inline add-step input.
+const ADD_STEP_SCROLL_MARGIN = 300;
+
+// Scroll content bottom padding (the safe-area inset is added on top of these).
+const BOTTOM_PADDING = {
+  base: 130, // normal browsing
+  topForm: 240, // a top form (add or edit) is open
+  stepFocused: 400, // an inline add-step input is focused (beats max-scroll clamp)
+};
+
 export default function OpenWorkScreen() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
@@ -65,8 +89,11 @@ export default function OpenWorkScreen() {
             // inline add-step input is focused, add even more so the LAST card
             // can scroll above the keyboard instead of clamping at max scroll.
             paddingBottom:
-              (isStepInputFocused ? 400 : showForm || editingItem ? 240 : 130) +
-              insets.bottom,
+              (isStepInputFocused
+                ? BOTTOM_PADDING.stepFocused
+                : showForm || editingItem
+                  ? BOTTOM_PADDING.topForm
+                  : BOTTOM_PADDING.base) + insets.bottom,
           },
         ]}
       >
@@ -92,8 +119,12 @@ export default function OpenWorkScreen() {
             // Top-anchored form (like add): fixed scroll offsets, no per-card
             // position math. Edit form has no group/energy pills, so the note
             // field sits a little higher than the add form's.
-            onFocusGoalField={() => scrollFieldAboveKeyboard(scrollRef, 340)}
-            onFocusNoteField={() => scrollFieldAboveKeyboard(scrollRef, 430)}
+            onFocusGoalField={() =>
+              scrollFieldAboveKeyboard(scrollRef, SCROLL_Y.editGoal)
+            }
+            onFocusNoteField={() =>
+              scrollFieldAboveKeyboard(scrollRef, SCROLL_Y.editNote)
+            }
           />
         )}
 
@@ -102,10 +133,12 @@ export default function OpenWorkScreen() {
             onAdd={addWorkItem}
             onClose={() => setShowForm(false)}
             onFocusNextMoveField={() =>
-              scrollFieldAboveKeyboard(scrollRef, 520)
+              scrollFieldAboveKeyboard(scrollRef, SCROLL_Y.addNote)
             }
             // Goal sits above the note field, so a smaller scroll target.
-            onFocusGoalField={() => scrollFieldAboveKeyboard(scrollRef, 340)}
+            onFocusGoalField={() =>
+              scrollFieldAboveKeyboard(scrollRef, SCROLL_Y.addGoal)
+            }
           />
         )}
 
@@ -143,7 +176,7 @@ export default function OpenWorkScreen() {
                 setIsStepInputFocused(true);
                 scrollFieldAboveKeyboard(
                   scrollRef,
-                  Math.max(0, cardBottomY - 300)
+                  Math.max(0, cardBottomY - ADD_STEP_SCROLL_MARGIN)
                 );
               }}
               onBlurAddStep={() => setIsStepInputFocused(false)}

@@ -52,11 +52,13 @@ const KeyboardSafeScrollView = forwardRef<ScrollView, Props>(
 /**
  * Scroll a focused lower form field above the keyboard.
  *
- * Fires twice so it lands whether Android's adjustResize is fast or slow: once
- * early, once after the window has finished shrinking. `y` is a fixed offset
- * tuned per form (the field's approximate distance from the top of the scroll
- * content). Reliability-over-elegance — a fixed scrollTo is far more dependable
- * on Android than native measurement.
+ * KeyboardSafeScrollView (behavior="padding") makes lower fields scrollable
+ * once the keyboard opens, but does not auto-scroll the focused field into
+ * view — so callers nudge it up here. Fires twice so it lands whether the
+ * keyboard animates in fast or slow: once early, once after the keyboard inset
+ * has settled. `y` is a fixed offset tuned per form (the field's approximate
+ * distance from the top of the scroll content). Reliability-over-elegance — a
+ * fixed scrollTo is far more dependable than native measurement.
  */
 export function scrollFieldAboveKeyboard(
   ref: React.RefObject<ScrollView | null>,
