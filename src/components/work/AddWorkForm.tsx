@@ -19,6 +19,7 @@ export default function AddWorkForm({
     group: WorkGroup;
     energy: EnergyLevel;
     note: string;
+    dueDate?: string;
     status?: WorkStatus;
   }) => void;
   onClose: () => void;
@@ -30,6 +31,7 @@ export default function AddWorkForm({
   const [project, setProject] = useState("");
   const [group, setGroup] = useState<WorkGroup>("Murals");
   const [energy, setEnergy] = useState<EnergyLevel>("Medium energy");
+  const [dueDate, setDueDate] = useState("");
   const [note, setNote] = useState("");
 
   // The "next small move" field sits at the bottom of the form. On Android,
@@ -50,11 +52,13 @@ export default function AddWorkForm({
       group,
       energy,
       note: note.trim(),
+      dueDate: dueDate.trim() || undefined,
     });
     setTitle("");
     setProject("");
     setGroup("Murals");
     setEnergy("Medium energy");
+    setDueDate("");
     setNote("");
     onClose();
   };
@@ -84,6 +88,18 @@ export default function AddWorkForm({
         placeholderTextColor={colors.lavender}
         value={project}
         onChangeText={setProject}
+        returnKeyType="next"
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="Due date (optional) · YYYY-MM-DD"
+        placeholderTextColor={colors.lavender}
+        value={dueDate}
+        onChangeText={setDueDate}
+        keyboardType="numbers-and-punctuation"
+        autoCapitalize="none"
+        autoCorrect={false}
         returnKeyType="next"
       />
 

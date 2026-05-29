@@ -5,6 +5,7 @@ import Eyebrow from "../shared/Eyebrow";
 import StatusChip from "../shared/StatusChip";
 import EnergyChip from "../shared/EnergyChip";
 import { colors, fonts } from "../../lib/theme";
+import { formatDueDate } from "../../lib/dates";
 import type { WorkItem } from "../../lib/types";
 
 export default function WorkCard({
@@ -82,6 +83,11 @@ export default function WorkCard({
       <View style={styles.chipRow}>
         <StatusChip status={item.status} onPress={onCycleStatus} />
         <EnergyChip level={item.energy} />
+        {!!item.dueDate && (
+          <View style={styles.dueChip}>
+            <Text style={styles.dueChipText}>{formatDueDate(item.dueDate)}</Text>
+          </View>
+        )}
       </View>
 
       <Pressable
@@ -201,6 +207,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
     alignItems: "center",
+    flexWrap: "wrap",
+  },
+  dueChip: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(212, 168, 67, 0.35)",
+    backgroundColor: "rgba(212, 168, 67, 0.1)",
+  },
+  dueChipText: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    letterSpacing: 0.3,
+    color: colors.gold,
   },
   stepsToggle: {
     flexDirection: "row",
