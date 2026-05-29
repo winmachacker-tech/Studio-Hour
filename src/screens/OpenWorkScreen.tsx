@@ -1,5 +1,13 @@
-import React, { useState } from "react";
-import { ScrollView, View, Text, Pressable, StyleSheet } from "react-native";
+import React, { useRef, useState } from "react";
+import {
+  ScrollView,
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Eyebrow from "../components/shared/Eyebrow";
 import FilterRow from "../components/shared/FilterRow";
@@ -17,6 +25,7 @@ const WORDS = [
 
 export default function OpenWorkScreen() {
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
   const [filter, setFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
   const {
@@ -38,14 +47,29 @@ export default function OpenWorkScreen() {
     : "";
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      // Android's manifest uses windowSoftInputMode="adjustResize", which
+      // already shrinks the window when the keyboard opens — so we let it
+      // handle Android and only apply padding on iOS (which has no resize).
+      // Stacking both would create a double gap above the keyboard.
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 20, paddingBottom: 130 },
+          {
+            paddingTop: insets.top + 20,
+            // Extra room while the add-project form is open so the lower
+            // fields and Save button can scroll clear of the keyboard.
+            paddingBottom: (showForm ? 240 : 130) + insets.bottom,
+          },
         ]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         <View style={styles.header}>
           <Eyebrow>open projects</Eyebrow>
@@ -61,6 +85,14 @@ export default function OpenWorkScreen() {
           <AddWorkForm
             onAdd={addWorkItem}
             onClose={() => setShowForm(false)}
+            onFocusNextMoveField={() => {
+              // Fixed-offset scroll: bring the lower "next small move" field
+              // and the Save button above the Android keyboard. 250ms lets
+              // adjustResize finish shrinking the window before we scroll.
+              setTimeout(() => {
+                scrollRef.current?.scrollTo({ y: 420, animated: true });
+              }, 250);
+            }}
           />
         )}
 
@@ -99,7 +131,7 @@ export default function OpenWorkScreen() {
           <Text style={styles.fabText}>＋  add project</Text>
         </Pressable>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

@@ -11,6 +11,7 @@ const ENERGY_LEVELS: EnergyLevel[] = ["High focus", "Medium energy", "Low lift"]
 export default function AddWorkForm({
   onAdd,
   onClose,
+  onFocusNextMoveField,
 }: {
   onAdd: (item: {
     title: string;
@@ -21,6 +22,9 @@ export default function AddWorkForm({
     status?: WorkStatus;
   }) => void;
   onClose: () => void;
+  // Called when the lower "next small move" field focuses, so the parent
+  // ScrollView can scroll it (and the Save button) above the keyboard.
+  onFocusNextMoveField?: () => void;
 }) {
   const [title, setTitle] = useState("");
   const [project, setProject] = useState("");
@@ -113,6 +117,7 @@ export default function AddWorkForm({
         placeholderTextColor={colors.lavender}
         value={note}
         onChangeText={setNote}
+        onFocus={onFocusNextMoveField}
         returnKeyType="done"
         onSubmitEditing={submit}
       />
