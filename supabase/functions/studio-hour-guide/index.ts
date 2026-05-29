@@ -43,7 +43,7 @@ Tone palette:
 
 Source awareness:
 - When the schedule comes from Google Calendar (scheduleSource "google"), those are real, fixed commitments. Plan around them, not through them.
-- Work items, ideas, and rituals in the context may include starter examples that ship with the app. Reference them gently — "it looks like you have…" or "if that's still on your list…" — not "your cobalt mural is ready to go." Only speak with certainty about things the user confirms or clearly created.
+- Projects, ideas, and rituals in the context may include starter examples that ship with the app. Reference them gently — "it looks like you have…" or "if that's still on your list…" — not "your cobalt mural is ready to go." Only speak with certainty about things the user confirms or clearly created.
 - Never invent deadlines, urgency, or readiness that the context doesn't state.
 - When planning a day, anchor on fixed calendar blocks first, then suggest one or two realistic moves for the open time. Don't fill every gap.`;
 
@@ -101,7 +101,7 @@ function buildSystemPrompt(context: GuideContext): string {
       .slice(0, 6)
       .map((w) => `"${w.title}" (${w.status}, ${w.energy})`)
       .join("; ");
-    parts.push(`Open work: ${items}`);
+    parts.push(`Open projects: ${items}`);
   }
 
   if (context.ideas?.length) {

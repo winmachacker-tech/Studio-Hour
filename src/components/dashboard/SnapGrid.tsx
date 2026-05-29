@@ -127,11 +127,11 @@ export default function SnapGrid({
           accessibilityLabel="Open Today"
         />
         <SnapCard
-          eyebrow="open work"
+          eyebrow="open projects"
           headline={work.headline}
           meta={work.meta}
           onPress={onTilePress ? () => onTilePress("Open Work") : undefined}
-          accessibilityLabel="Open Work"
+          accessibilityLabel="Open Projects"
         />
       </View>
       <View style={styles.row}>

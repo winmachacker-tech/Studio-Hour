@@ -45,7 +45,7 @@ export default function OpenWorkScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Eyebrow>open work</Eyebrow>
+          <Eyebrow>open projects</Eyebrow>
           <Text style={styles.title}>Ready when you are.</Text>
           {countText !== "" && <Text style={styles.subtitle}>{countText}</Text>}
         </View>
@@ -63,7 +63,7 @@ export default function OpenWorkScreen() {
 
         {isHydrated && items.length === 0 && !showForm && (
           <>
-            <Text style={styles.emptyText}>No open work yet.</Text>
+            <Text style={styles.emptyText}>No open projects yet.</Text>
             <Text style={styles.emptyHint}>
               Add a piece, project, commission, idea, or follow-up you want to
               keep moving.
@@ -88,9 +88,9 @@ export default function OpenWorkScreen() {
         <Pressable
           style={[styles.fab, { bottom: 90 + insets.bottom }]}
           onPress={() => setShowForm(true)}
-          accessibilityLabel="Add work"
+          accessibilityLabel="Add project"
         >
-          <Text style={styles.fabText}>＋  add work</Text>
+          <Text style={styles.fabText}>＋  add project</Text>
         </Pressable>
       )}
     </View>

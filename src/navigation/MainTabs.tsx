@@ -44,7 +44,11 @@ export default function MainTabs() {
       })}
     >
       <Tab.Screen name="Today" component={TodayScreen} />
-      <Tab.Screen name="Open Work" component={OpenWorkScreen} />
+      <Tab.Screen
+        name="Open Work"
+        component={OpenWorkScreen}
+        options={{ tabBarLabel: "Open Projects" }}
+      />
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
       <Tab.Screen name="Ideas" component={IdeasScreen} />
       <Tab.Screen name="Guide" component={GuideScreen} />
