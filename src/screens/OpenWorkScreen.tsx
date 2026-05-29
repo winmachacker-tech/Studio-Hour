@@ -1,16 +1,11 @@
 import React, { useRef, useState } from "react";
-import {
-  ScrollView,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
+import { ScrollView, View, Text, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Eyebrow from "../components/shared/Eyebrow";
 import FilterRow from "../components/shared/FilterRow";
+import KeyboardSafeScrollView, {
+  scrollFieldAboveKeyboard,
+} from "../components/shared/KeyboardSafeScrollView";
 import WorkCard from "../components/work/WorkCard";
 import AddWorkForm from "../components/work/AddWorkForm";
 import { useTasks } from "../hooks/useTasks";
@@ -28,6 +23,9 @@ export default function OpenWorkScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const [filter, setFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
+  // While an inline add-step input is focused we add extra bottom space so the
+  // last card can scroll above the keyboard (otherwise it clamps at max scroll).
+  const [isStepInputFocused, setIsStepInputFocused] = useState(false);
   const {
     items,
     addWorkItem,
@@ -47,15 +45,8 @@ export default function OpenWorkScreen() {
     : "";
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      // Android's manifest uses windowSoftInputMode="adjustResize", which
-      // already shrinks the window when the keyboard opens — so we let it
-      // handle Android and only apply padding on iOS (which has no resize).
-      // Stacking both would create a double gap above the keyboard.
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
-      <ScrollView
+    <View style={styles.container}>
+      <KeyboardSafeScrollView
         ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={[
@@ -63,13 +54,14 @@ export default function OpenWorkScreen() {
           {
             paddingTop: insets.top + 20,
             // Extra room while the add-project form is open so the lower
-            // fields and Save button can scroll clear of the keyboard.
-            paddingBottom: (showForm ? 240 : 130) + insets.bottom,
+            // fields and Save button can scroll clear of the keyboard. While an
+            // inline add-step input is focused, add even more so the LAST card
+            // can scroll above the keyboard instead of clamping at max scroll.
+            paddingBottom:
+              (isStepInputFocused ? 400 : showForm ? 240 : 130) +
+              insets.bottom,
           },
         ]}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
       >
         <View style={styles.header}>
           <Eyebrow>open projects</Eyebrow>
@@ -85,16 +77,9 @@ export default function OpenWorkScreen() {
           <AddWorkForm
             onAdd={addWorkItem}
             onClose={() => setShowForm(false)}
-            onFocusNextMoveField={() => {
-              // Fixed-offset scroll to bring the lower "next small move" field
-              // and the Save button above the Android keyboard. Fire twice —
-              // once early, once after adjustResize has finished shrinking the
-              // window — so it lands reliably regardless of resize timing.
-              const scrollDown = () =>
-                scrollRef.current?.scrollTo({ y: 520, animated: true });
-              setTimeout(scrollDown, 100);
-              setTimeout(scrollDown, 300);
-            }}
+            onFocusNextMoveField={() =>
+              scrollFieldAboveKeyboard(scrollRef, 520)
+            }
           />
         )}
 
@@ -118,11 +103,20 @@ export default function OpenWorkScreen() {
               onAddSubtask={(text) => addSubtask(item.id, text)}
               onToggleSubtask={(subtaskId) => toggleSubtask(item.id, subtaskId)}
               onDeleteSubtask={(subtaskId) => deleteSubtask(item.id, subtaskId)}
+              onFocusAddStep={(cardBottomY) => {
+                // Grow the bottom padding first so the scroll isn't clamped,
+                // then scroll the card's bottom edge (where the add-step input
+                // sits) to ~300px from the top — above the keyboard —
+                // regardless of where the card is in the list.
+                setIsStepInputFocused(true);
+                scrollFieldAboveKeyboard(scrollRef, Math.max(0, cardBottomY - 300));
+              }}
+              onBlurAddStep={() => setIsStepInputFocused(false)}
             />
           ))}
 
         <Text style={styles.foot}>— done is a kind of rest, too.</Text>
-      </ScrollView>
+      </KeyboardSafeScrollView>
 
       {!showForm && (
         <Pressable
@@ -133,7 +127,7 @@ export default function OpenWorkScreen() {
           <Text style={styles.fabText}>＋  add project</Text>
         </Pressable>
       )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

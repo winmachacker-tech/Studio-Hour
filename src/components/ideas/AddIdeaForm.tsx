@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import Card from "../shared/Card";
 import Eyebrow from "../shared/Eyebrow";
@@ -24,6 +24,7 @@ const PLATFORM_TO_KIND: Record<Platform, IdeaKind> = {
 export default function AddIdeaForm({
   onAdd,
   onClose,
+  onFocusNoteField,
 }: {
   onAdd: (idea: {
     title: string;
@@ -33,10 +34,22 @@ export default function AddIdeaForm({
     kind: IdeaKind;
   }) => void;
   onClose: () => void;
+  // Called when the lower note field focuses, so the parent ScrollView can
+  // scroll it (and the Save button) above the keyboard.
+  onFocusNoteField?: () => void;
 }) {
   const [title, setTitle] = useState("");
   const [platform, setPlatform] = useState<Platform>("artwork");
   const [note, setNote] = useState("");
+
+  // onFocus can fire late/inconsistently on Android, so we also force focus
+  // from the wrapper's onPressIn and request the parent scroll from both.
+  const noteRef = useRef<TextInput>(null);
+
+  const focusNoteField = () => {
+    noteRef.current?.focus();
+    onFocusNoteField?.();
+  };
 
   const submit = () => {
     if (!title.trim()) return;
@@ -91,15 +104,19 @@ export default function AddIdeaForm({
         ))}
       </View>
 
-      <TextInput
-        style={[styles.input, styles.noteInput]}
-        placeholder="Short note (optional)"
-        placeholderTextColor={colors.lavender}
-        value={note}
-        onChangeText={setNote}
-        returnKeyType="done"
-        onSubmitEditing={submit}
-      />
+      <Pressable onPressIn={focusNoteField} accessibilityRole="none">
+        <TextInput
+          ref={noteRef}
+          style={[styles.input, styles.noteInput]}
+          placeholder="Short note (optional)"
+          placeholderTextColor={colors.lavender}
+          value={note}
+          onChangeText={setNote}
+          onFocus={onFocusNoteField}
+          returnKeyType="done"
+          onSubmitEditing={submit}
+        />
+      </Pressable>
 
       <Pressable
         style={[styles.saveBtn, !title.trim() && styles.saveBtnDisabled]}

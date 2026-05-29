@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import Card from "../shared/Card";
 import Eyebrow from "../shared/Eyebrow";
@@ -14,6 +14,8 @@ export default function WorkCard({
   onAddSubtask,
   onToggleSubtask,
   onDeleteSubtask,
+  onFocusAddStep,
+  onBlurAddStep,
 }: {
   item: WorkItem;
   onToggleDone: () => void;
@@ -21,6 +23,14 @@ export default function WorkCard({
   onAddSubtask: (text: string) => void;
   onToggleSubtask: (subtaskId: string) => void;
   onDeleteSubtask: (subtaskId: string) => void;
+  // Called when the inline add-step input focuses, with this card's bottom
+  // edge (y + height) in the parent ScrollView's content. The parent scrolls
+  // that point above the keyboard. The card can be anywhere in the list, so a
+  // captured position is used rather than a hardcoded top-only scroll.
+  onFocusAddStep?: (cardBottomY: number) => void;
+  // Called when the inline add-step input blurs, so the parent can restore
+  // its normal bottom padding.
+  onBlurAddStep?: () => void;
 }) {
   const isDone = item.status === "Done";
   const subtasks = item.subtasks ?? [];
@@ -32,6 +42,17 @@ export default function WorkCard({
   const [expanded, setExpanded] = useState(false);
   const [newStep, setNewStep] = useState("");
 
+  // Captured from onLayout: this card's top offset and height within the
+  // scroll content. Updated whenever the card resizes (e.g. steps expand).
+  const cardTopRef = useRef(0);
+  const cardHeightRef = useRef(0);
+  const addStepRef = useRef<TextInput>(null);
+
+  const focusAddStep = () => {
+    addStepRef.current?.focus();
+    onFocusAddStep?.(cardTopRef.current + cardHeightRef.current);
+  };
+
   const submitStep = () => {
     const trimmed = newStep.trim();
     if (!trimmed) return;
@@ -40,7 +61,13 @@ export default function WorkCard({
   };
 
   return (
-    <Card style={isDone ? styles.done : undefined}>
+    <Card
+      style={isDone ? styles.done : undefined}
+      onLayout={(e) => {
+        cardTopRef.current = e.nativeEvent.layout.y;
+        cardHeightRef.current = e.nativeEvent.layout.height;
+      }}
+    >
       <Eyebrow color={isDone ? colors.lavender : undefined}>
         {item.project}
       </Eyebrow>
@@ -113,16 +140,23 @@ export default function WorkCard({
           ))}
 
           <View style={styles.addRow}>
-            <TextInput
-              style={styles.addInput}
-              placeholder="Add a step…"
-              placeholderTextColor={colors.lavender}
-              value={newStep}
-              onChangeText={setNewStep}
-              returnKeyType="done"
-              onSubmitEditing={submitStep}
-              blurOnSubmit={false}
-            />
+            <Pressable style={styles.addInputWrap} onPressIn={focusAddStep}>
+              <TextInput
+                ref={addStepRef}
+                style={styles.addInput}
+                placeholder="Add a step…"
+                placeholderTextColor={colors.lavender}
+                value={newStep}
+                onChangeText={setNewStep}
+                onFocus={() =>
+                  onFocusAddStep?.(cardTopRef.current + cardHeightRef.current)
+                }
+                onBlur={onBlurAddStep}
+                returnKeyType="done"
+                onSubmitEditing={submitStep}
+                blurOnSubmit={false}
+              />
+            </Pressable>
             <Pressable
               style={[styles.addBtn, !newStep.trim() && styles.addBtnDisabled]}
               onPress={submitStep}
@@ -266,8 +300,10 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 2,
   },
-  addInput: {
+  addInputWrap: {
     flex: 1,
+  },
+  addInput: {
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 10,

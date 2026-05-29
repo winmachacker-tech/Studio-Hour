@@ -1,8 +1,11 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { ScrollView, View, Text, Pressable, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Eyebrow from "../components/shared/Eyebrow";
 import FilterRow from "../components/shared/FilterRow";
+import KeyboardSafeScrollView, {
+  scrollFieldAboveKeyboard,
+} from "../components/shared/KeyboardSafeScrollView";
 import IdeaCard from "../components/ideas/IdeaCard";
 import AddIdeaForm from "../components/ideas/AddIdeaForm";
 import { useIdeas } from "../hooks/useIdeas";
@@ -12,6 +15,7 @@ const FILTERS = ["All", "Posts", "Artwork", "Voiceover"];
 
 export default function IdeasScreen() {
   const insets = useSafeAreaInsets();
+  const scrollRef = useRef<ScrollView>(null);
   const [filter, setFilter] = useState("All");
   const [showForm, setShowForm] = useState(false);
   const { items, addIdea, cycleStatus, isHydrated } = useIdeas();
@@ -21,13 +25,18 @@ export default function IdeasScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView
+      <KeyboardSafeScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 20, paddingBottom: 130 },
+          {
+            paddingTop: insets.top + 20,
+            // Extra room while the add-idea form is open so the lower note
+            // field and Save button can scroll clear of the keyboard.
+            paddingBottom: (showForm ? 240 : 130) + insets.bottom,
+          },
         ]}
-        showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
           <Eyebrow>the idea drawer</Eyebrow>
@@ -46,6 +55,7 @@ export default function IdeasScreen() {
           <AddIdeaForm
             onAdd={addIdea}
             onClose={() => setShowForm(false)}
+            onFocusNoteField={() => scrollFieldAboveKeyboard(scrollRef, 360)}
           />
         )}
 
@@ -61,7 +71,7 @@ export default function IdeasScreen() {
               onCycleStatus={() => cycleStatus(idea.id)}
             />
           ))}
-      </ScrollView>
+      </KeyboardSafeScrollView>
 
       {!showForm && (
         <Pressable
