@@ -1,7 +1,6 @@
 import React, { forwardRef } from "react";
 import {
   KeyboardAvoidingView,
-  Platform,
   ScrollView,
   StyleSheet,
   type ScrollViewProps,
@@ -17,11 +16,13 @@ type Props = ScrollViewProps & {
  * - Renders a ScrollView with the standard keyboard props so taps on buttons
  *   register while the keyboard is open (`keyboardShouldPersistTaps="handled"`)
  *   and dragging the list dismisses it (`keyboardDismissMode="on-drag"`).
- * - On iOS, lifts content with `KeyboardAvoidingView` `behavior="padding"`.
- *   On Android the app relies on the manifest's
- *   `android:windowSoftInputMode="adjustResize"`, so KeyboardAvoidingView is a
- *   passthrough there — stacking both would create a double gap above the
- *   keyboard.
+ * - Lifts content with `KeyboardAvoidingView` `behavior="padding"` on BOTH
+ *   platforms. The app runs Android edge-to-edge (`edgeToEdgeEnabled=true`),
+ *   which makes `android:windowSoftInputMode="adjustResize"` a no-op — the
+ *   window no longer shrinks when the keyboard opens. So Android can't rely on
+ *   the OS resizing; `behavior="padding"` listens to keyboard events and pads
+ *   by the IME height, which is what actually works under edge-to-edge.
+ *   (See docs/open-projects-keyboard-rca.md.)
  *
  * Use it exactly like a ScrollView: pass `style`, `contentContainerStyle`
  * (including any paddingTop/paddingBottom) and children. Forward a ref to drive
@@ -33,10 +34,7 @@ type Props = ScrollViewProps & {
 const KeyboardSafeScrollView = forwardRef<ScrollView, Props>(
   function KeyboardSafeScrollView({ children, ...scrollProps }, ref) {
     return (
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView
           ref={ref}
           keyboardShouldPersistTaps="handled"

@@ -32,6 +32,10 @@ export default function MainTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        // Reclaim the tab strip while typing so it doesn't occupy space above
+        // the keyboard (relevant under Android edge-to-edge — see
+        // docs/open-projects-keyboard-rca.md).
+        tabBarHideOnKeyboard: true,
         tabBarStyle: styles.tabBar,
         tabBarActiveTintColor: colors.teal,
         tabBarInactiveTintColor: colors.lavender,
