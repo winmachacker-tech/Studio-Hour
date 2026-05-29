@@ -47,6 +47,35 @@ export type WorkStatus =
 export type WorkGroup = "Murals" | "Studio art" | "Design" | "Leads";
 export type EnergyLevel = "High focus" | "Medium energy" | "Low lift";
 
+// ── Phase 2: Open Projects model (additive, backward-compatible) ──────
+// A WorkItem is treated as the project entity for this phase. The fields
+// below are all optional so existing persisted items keep loading; the
+// normalizer in useTasks fills safe defaults on hydration.
+
+// How a project's progress value is determined.
+//   "auto"   → derived from subtask completion
+//   "manual" → set directly by the user (e.g. a slider)
+export type ProgressMode = "auto" | "manual";
+
+// Current schema version for persisted WorkItems. Bump when the shape
+// changes so the normalizer can no-op on already-migrated data.
+export const WORK_ITEM_SCHEMA_VERSION = 2;
+
+// A sub-point within a project.
+export interface ProjectSubtask {
+  id: string;
+  text: string;
+  done: boolean;
+  createdAt: string;
+}
+
+// A logged win / progress note on a project.
+export interface ProjectAccomplishment {
+  id: string;
+  text: string;
+  date: string; // ISO timestamp
+}
+
 export interface WorkItem {
   id: string;
   project: string;
@@ -58,6 +87,15 @@ export interface WorkItem {
   dueDate?: string;
   createdAt: string;
   updatedAt: string;
+
+  // ── Phase 2 additions (all optional; defaulted by the normalizer) ──
+  subtasks?: ProjectSubtask[];
+  accomplishments?: ProjectAccomplishment[];
+  progress?: number; // 0–100
+  progressMode?: ProgressMode;
+  isMultiSession?: boolean;
+  goal?: string;
+  schemaVersion?: number;
 }
 
 export type Platform =
