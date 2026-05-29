@@ -20,6 +20,7 @@ export default function AddWorkForm({
     energy: EnergyLevel;
     note: string;
     dueDate?: string;
+    goal?: string;
     status?: WorkStatus;
   }) => void;
   onClose: () => void;
@@ -32,6 +33,7 @@ export default function AddWorkForm({
   const [group, setGroup] = useState<WorkGroup>("Murals");
   const [energy, setEnergy] = useState<EnergyLevel>("Medium energy");
   const [dueDate, setDueDate] = useState("");
+  const [goal, setGoal] = useState("");
   const [note, setNote] = useState("");
 
   // The "next small move" field sits at the bottom of the form. On Android,
@@ -53,12 +55,14 @@ export default function AddWorkForm({
       energy,
       note: note.trim(),
       dueDate: dueDate.trim() || undefined,
+      goal: goal.trim() || undefined,
     });
     setTitle("");
     setProject("");
     setGroup("Murals");
     setEnergy("Medium energy");
     setDueDate("");
+    setGoal("");
     setNote("");
     onClose();
   };
@@ -100,6 +104,16 @@ export default function AddWorkForm({
         keyboardType="numbers-and-punctuation"
         autoCapitalize="none"
         autoCorrect={false}
+        returnKeyType="next"
+      />
+
+      <Text style={styles.fieldLabel}>goal / intended outcome</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="What should this become?"
+        placeholderTextColor={colors.lavender}
+        value={goal}
+        onChangeText={setGoal}
         returnKeyType="next"
       />
 

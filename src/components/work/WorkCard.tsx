@@ -89,6 +89,12 @@ export default function WorkCard({
         </Text>
       </Pressable>
       <Text style={styles.note}>{item.note}</Text>
+      {!!item.goal && (
+        <Text style={styles.goal}>
+          <Text style={styles.goalLabel}>goal · </Text>
+          {item.goal}
+        </Text>
+      )}
       <View style={styles.chipRow}>
         <StatusChip status={item.status} onPress={onCycleStatus} />
         <EnergyChip level={item.energy} />
@@ -223,6 +229,22 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.lavender,
     marginBottom: 12,
+  },
+  goal: {
+    fontFamily: fonts.regular,
+    fontStyle: "italic",
+    fontSize: 12.5,
+    lineHeight: 18,
+    color: colors.cream,
+    marginBottom: 12,
+  },
+  goalLabel: {
+    fontFamily: fonts.semiBold,
+    fontStyle: "normal",
+    fontSize: 9.5,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+    color: colors.teal,
   },
   chipRow: {
     flexDirection: "row",

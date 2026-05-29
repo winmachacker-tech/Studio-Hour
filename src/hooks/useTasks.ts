@@ -136,7 +136,9 @@ export function useTasks() {
   const updateWorkItem = useCallback(
     (
       id: string,
-      patch: Partial<Pick<WorkItem, "title" | "project" | "note" | "dueDate">>
+      patch: Partial<
+        Pick<WorkItem, "title" | "project" | "note" | "dueDate" | "goal">
+      >
     ) => {
       setItems((prev) =>
         prev.map((item) =>

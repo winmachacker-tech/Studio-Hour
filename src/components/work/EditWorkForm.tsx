@@ -10,6 +10,7 @@ export type WorkItemEdits = {
   project: string;
   note: string;
   dueDate?: string;
+  goal?: string;
 };
 
 export default function EditWorkForm({
@@ -31,6 +32,7 @@ export default function EditWorkForm({
   const [title, setTitle] = useState(item.title);
   const [project, setProject] = useState(item.project);
   const [dueDate, setDueDate] = useState(item.dueDate ?? "");
+  const [goal, setGoal] = useState(item.goal ?? "");
   const [note, setNote] = useState(item.note);
 
   // Captured from onLayout: this form's top offset and height within the
@@ -52,6 +54,7 @@ export default function EditWorkForm({
       project: project.trim(),
       note: note.trim(),
       dueDate: dueDate.trim() || undefined,
+      goal: goal.trim() || undefined,
     });
   };
 
@@ -97,6 +100,15 @@ export default function EditWorkForm({
         keyboardType="numbers-and-punctuation"
         autoCapitalize="none"
         autoCorrect={false}
+        returnKeyType="next"
+      />
+
+      <TextInput
+        style={styles.input}
+        placeholder="What should this become?"
+        placeholderTextColor={colors.lavender}
+        value={goal}
+        onChangeText={setGoal}
         returnKeyType="next"
       />
 
