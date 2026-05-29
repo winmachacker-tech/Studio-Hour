@@ -130,6 +130,25 @@ export function useTasks() {
     [setItems]
   );
 
+  // Update the editable detail fields only. Everything else on the item —
+  // subtasks, progress, accomplishments, status, energy, group, createdAt — is
+  // preserved by the spread.
+  const updateWorkItem = useCallback(
+    (
+      id: string,
+      patch: Partial<Pick<WorkItem, "title" | "project" | "note" | "dueDate">>
+    ) => {
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === id
+            ? { ...item, ...patch, updatedAt: new Date().toISOString() }
+            : item
+        )
+      );
+    },
+    [setItems]
+  );
+
   const addSubtask = useCallback(
     (id: string, text: string) => {
       const trimmed = text.trim();
@@ -195,6 +214,7 @@ export function useTasks() {
   return {
     items: normalizedItems,
     addWorkItem,
+    updateWorkItem,
     toggleDone,
     cycleStatus,
     addSubtask,

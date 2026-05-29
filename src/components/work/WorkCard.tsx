@@ -17,6 +17,7 @@ export default function WorkCard({
   onDeleteSubtask,
   onFocusAddStep,
   onBlurAddStep,
+  onEdit,
 }: {
   item: WorkItem;
   onToggleDone: () => void;
@@ -24,6 +25,7 @@ export default function WorkCard({
   onAddSubtask: (text: string) => void;
   onToggleSubtask: (subtaskId: string) => void;
   onDeleteSubtask: (subtaskId: string) => void;
+  onEdit?: () => void;
   // Called when the inline add-step input focuses, with this card's bottom
   // edge (y + height) in the parent ScrollView's content. The parent scrolls
   // that point above the keyboard. The card can be anywhere in the list, so a
@@ -69,9 +71,16 @@ export default function WorkCard({
         cardHeightRef.current = e.nativeEvent.layout.height;
       }}
     >
-      <Eyebrow color={isDone ? colors.lavender : undefined}>
-        {item.project}
-      </Eyebrow>
+      <View style={styles.topRow}>
+        <Eyebrow color={isDone ? colors.lavender : undefined}>
+          {item.project}
+        </Eyebrow>
+        {onEdit && (
+          <Pressable onPress={onEdit} hitSlop={8} accessibilityLabel="Edit project">
+            <Text style={styles.editLink}>edit</Text>
+          </Pressable>
+        )}
+      </View>
       <Pressable onPress={onToggleDone}>
         <Text
           style={[styles.title, isDone && styles.titleDone]}
@@ -182,6 +191,18 @@ const styles = StyleSheet.create({
   done: {
     opacity: 0.5,
     borderStyle: "dashed" as const,
+  },
+  topRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  editLink: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    color: colors.teal,
   },
   title: {
     fontFamily: fonts.regular,
