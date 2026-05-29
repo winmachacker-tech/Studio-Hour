@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { View, Text, TextInput, Pressable, StyleSheet } from "react-native";
 import Card from "../shared/Card";
 import Eyebrow from "../shared/Eyebrow";
@@ -31,6 +31,16 @@ export default function AddWorkForm({
   const [group, setGroup] = useState<WorkGroup>("Murals");
   const [energy, setEnergy] = useState<EnergyLevel>("Medium energy");
   const [note, setNote] = useState("");
+
+  // The "next small move" field sits at the bottom of the form. On Android,
+  // onFocus alone can fire late/inconsistently, so we also force focus from
+  // the wrapper's onPressIn and request the parent scroll from both paths.
+  const noteRef = useRef<TextInput>(null);
+
+  const focusNoteField = () => {
+    noteRef.current?.focus();
+    onFocusNextMoveField?.();
+  };
 
   const submit = () => {
     if (!title.trim()) return;
@@ -111,16 +121,19 @@ export default function AddWorkForm({
         ))}
       </View>
 
-      <TextInput
-        style={[styles.input, styles.noteInput]}
-        placeholder="What's the next small move?"
-        placeholderTextColor={colors.lavender}
-        value={note}
-        onChangeText={setNote}
-        onFocus={onFocusNextMoveField}
-        returnKeyType="done"
-        onSubmitEditing={submit}
-      />
+      <Pressable onPressIn={focusNoteField} accessibilityRole="none">
+        <TextInput
+          ref={noteRef}
+          style={[styles.input, styles.noteInput]}
+          placeholder="What's the next small move?"
+          placeholderTextColor={colors.lavender}
+          value={note}
+          onChangeText={setNote}
+          onFocus={onFocusNextMoveField}
+          returnKeyType="done"
+          onSubmitEditing={submit}
+        />
+      </Pressable>
 
       <Pressable
         style={[styles.saveBtn, !title.trim() && styles.saveBtnDisabled]}

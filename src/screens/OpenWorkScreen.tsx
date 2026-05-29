@@ -86,12 +86,14 @@ export default function OpenWorkScreen() {
             onAdd={addWorkItem}
             onClose={() => setShowForm(false)}
             onFocusNextMoveField={() => {
-              // Fixed-offset scroll: bring the lower "next small move" field
-              // and the Save button above the Android keyboard. 250ms lets
-              // adjustResize finish shrinking the window before we scroll.
-              setTimeout(() => {
-                scrollRef.current?.scrollTo({ y: 420, animated: true });
-              }, 250);
+              // Fixed-offset scroll to bring the lower "next small move" field
+              // and the Save button above the Android keyboard. Fire twice —
+              // once early, once after adjustResize has finished shrinking the
+              // window — so it lands reliably regardless of resize timing.
+              const scrollDown = () =>
+                scrollRef.current?.scrollTo({ y: 520, animated: true });
+              setTimeout(scrollDown, 100);
+              setTimeout(scrollDown, 300);
             }}
           />
         )}
