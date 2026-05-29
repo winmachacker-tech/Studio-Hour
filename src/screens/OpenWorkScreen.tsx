@@ -43,6 +43,10 @@ export default function OpenWorkScreen() {
   const shown =
     filter === "All" ? items : items.filter((t) => t.group === filter);
 
+  // The project currently being edited (edit form renders at the top of the
+  // page, not inline in the list).
+  const editingItem = items.find((i) => i.id === editingId) ?? null;
+
   const countText = items.length > 0
     ? `${WORDS[items.length] ?? items.length} thing${items.length === 1 ? "" : "s"} in motion — not all for today. Pick by energy, not by guilt.`
     : "";
@@ -56,12 +60,12 @@ export default function OpenWorkScreen() {
           styles.content,
           {
             paddingTop: insets.top + 20,
-            // Extra room while the add-project form is open so the lower
+            // Extra room while a top form (add or edit) is open so its lower
             // fields and Save button can scroll clear of the keyboard. While an
             // inline add-step input is focused, add even more so the LAST card
             // can scroll above the keyboard instead of clamping at max scroll.
             paddingBottom:
-              (isStepInputFocused ? 400 : showForm ? 240 : 130) +
+              (isStepInputFocused ? 400 : showForm || editingItem ? 240 : 130) +
               insets.bottom,
           },
         ]}
@@ -76,6 +80,23 @@ export default function OpenWorkScreen() {
           <FilterRow filters={FILTERS} active={filter} onChange={setFilter} />
         )}
 
+        {editingItem && (
+          <EditWorkForm
+            key={editingItem.id}
+            item={editingItem}
+            onSave={(edits) => {
+              updateWorkItem(editingItem.id, edits);
+              setEditingId(null);
+            }}
+            onCancel={() => setEditingId(null)}
+            // Top-anchored form (like add): fixed scroll offsets, no per-card
+            // position math. Edit form has no group/energy pills, so the note
+            // field sits a little higher than the add form's.
+            onFocusGoalField={() => scrollFieldAboveKeyboard(scrollRef, 340)}
+            onFocusNoteField={() => scrollFieldAboveKeyboard(scrollRef, 430)}
+          />
+        )}
+
         {showForm && (
           <AddWorkForm
             onAdd={addWorkItem}
@@ -83,6 +104,8 @@ export default function OpenWorkScreen() {
             onFocusNextMoveField={() =>
               scrollFieldAboveKeyboard(scrollRef, 520)
             }
+            // Goal sits above the note field, so a smaller scroll target.
+            onFocusGoalField={() => scrollFieldAboveKeyboard(scrollRef, 340)}
           />
         )}
 
@@ -97,62 +120,40 @@ export default function OpenWorkScreen() {
         )}
 
         {isHydrated &&
-          shown.map((item) =>
-            editingId === item.id ? (
-              <EditWorkForm
-                key={item.id}
-                item={item}
-                onSave={(edits) => {
-                  updateWorkItem(item.id, edits);
-                  setEditingId(null);
-                }}
-                onCancel={() => setEditingId(null)}
-                onFocusNoteField={(formBottomY) => {
-                  // Same keyboard-safe path as the add-step input: grow bottom
-                  // padding so the scroll isn't clamped, then scroll the form's
-                  // bottom (note field) above the keyboard.
-                  setIsStepInputFocused(true);
-                  scrollFieldAboveKeyboard(
-                    scrollRef,
-                    Math.max(0, formBottomY - 300)
-                  );
-                }}
-                onBlurNoteField={() => setIsStepInputFocused(false)}
-              />
-            ) : (
-              <WorkCard
-                key={item.id}
-                item={item}
-                onToggleDone={() => toggleDone(item.id)}
-                onCycleStatus={() => cycleStatus(item.id)}
-                onEdit={() => setEditingId(item.id)}
-                onAddSubtask={(text) => addSubtask(item.id, text)}
-                onToggleSubtask={(subtaskId) =>
-                  toggleSubtask(item.id, subtaskId)
-                }
-                onDeleteSubtask={(subtaskId) =>
-                  deleteSubtask(item.id, subtaskId)
-                }
-                onFocusAddStep={(cardBottomY) => {
-                  // Grow the bottom padding first so the scroll isn't clamped,
-                  // then scroll the card's bottom edge (where the add-step
-                  // input sits) to ~300px from the top — above the keyboard —
-                  // regardless of where the card is in the list.
-                  setIsStepInputFocused(true);
-                  scrollFieldAboveKeyboard(
-                    scrollRef,
-                    Math.max(0, cardBottomY - 300)
-                  );
-                }}
-                onBlurAddStep={() => setIsStepInputFocused(false)}
-              />
-            )
-          )}
+          shown.map((item) => (
+            <WorkCard
+              key={item.id}
+              item={item}
+              onToggleDone={() => toggleDone(item.id)}
+              onCycleStatus={() => cycleStatus(item.id)}
+              onEdit={() => {
+                // Edit renders at the top of the page; close the add form so
+                // the two never compete.
+                setShowForm(false);
+                setEditingId(item.id);
+              }}
+              onAddSubtask={(text) => addSubtask(item.id, text)}
+              onToggleSubtask={(subtaskId) => toggleSubtask(item.id, subtaskId)}
+              onDeleteSubtask={(subtaskId) => deleteSubtask(item.id, subtaskId)}
+              onFocusAddStep={(cardBottomY) => {
+                // Grow the bottom padding first so the scroll isn't clamped,
+                // then scroll the card's bottom edge (where the add-step input
+                // sits) to ~300px from the top — above the keyboard —
+                // regardless of where the card is in the list.
+                setIsStepInputFocused(true);
+                scrollFieldAboveKeyboard(
+                  scrollRef,
+                  Math.max(0, cardBottomY - 300)
+                );
+              }}
+              onBlurAddStep={() => setIsStepInputFocused(false)}
+            />
+          ))}
 
         <Text style={styles.foot}>— done is a kind of rest, too.</Text>
       </KeyboardSafeScrollView>
 
-      {!showForm && (
+      {!showForm && !editingItem && (
         <Pressable
           style={[styles.fab, { bottom: 90 + insets.bottom }]}
           onPress={() => setShowForm(true)}

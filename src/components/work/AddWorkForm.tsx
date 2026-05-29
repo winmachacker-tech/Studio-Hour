@@ -12,6 +12,7 @@ export default function AddWorkForm({
   onAdd,
   onClose,
   onFocusNextMoveField,
+  onFocusGoalField,
 }: {
   onAdd: (item: {
     title: string;
@@ -27,6 +28,8 @@ export default function AddWorkForm({
   // Called when the lower "next small move" field focuses, so the parent
   // ScrollView can scroll it (and the Save button) above the keyboard.
   onFocusNextMoveField?: () => void;
+  // Same for the goal field (which sits above the note field).
+  onFocusGoalField?: () => void;
 }) {
   const [title, setTitle] = useState("");
   const [project, setProject] = useState("");
@@ -40,10 +43,16 @@ export default function AddWorkForm({
   // onFocus alone can fire late/inconsistently, so we also force focus from
   // the wrapper's onPressIn and request the parent scroll from both paths.
   const noteRef = useRef<TextInput>(null);
+  const goalRef = useRef<TextInput>(null);
 
   const focusNoteField = () => {
     noteRef.current?.focus();
     onFocusNextMoveField?.();
+  };
+
+  const focusGoalField = () => {
+    goalRef.current?.focus();
+    onFocusGoalField?.();
   };
 
   const submit = () => {
@@ -108,14 +117,18 @@ export default function AddWorkForm({
       />
 
       <Text style={styles.fieldLabel}>goal / intended outcome</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="What should this become?"
-        placeholderTextColor={colors.lavender}
-        value={goal}
-        onChangeText={setGoal}
-        returnKeyType="next"
-      />
+      <Pressable onPressIn={focusGoalField} accessibilityRole="none">
+        <TextInput
+          ref={goalRef}
+          style={styles.input}
+          placeholder="What should this become?"
+          placeholderTextColor={colors.lavender}
+          value={goal}
+          onChangeText={setGoal}
+          onFocus={onFocusGoalField}
+          returnKeyType="next"
+        />
+      </Pressable>
 
       <Text style={styles.fieldLabel}>group</Text>
       <View style={styles.pillRow}>

@@ -18,16 +18,16 @@ export default function EditWorkForm({
   onSave,
   onCancel,
   onFocusNoteField,
-  onBlurNoteField,
+  onFocusGoalField,
 }: {
   item: WorkItem;
   onSave: (edits: WorkItemEdits) => void;
   onCancel: () => void;
-  // Keyboard-safe scroll: report this form's bottom edge (y + height) within
-  // the parent ScrollView when the lower note field focuses; signal blur so
-  // the parent can restore normal padding. Mirrors the WorkCard add-step path.
-  onFocusNoteField?: (formBottomY: number) => void;
-  onBlurNoteField?: () => void;
+  // Keyboard-safe scroll: the edit form now renders at a fixed position near
+  // the top of the page (like the add form), so the parent just scrolls to a
+  // fixed offset on focus — no per-card position math. Mirrors AddWorkForm.
+  onFocusNoteField?: () => void;
+  onFocusGoalField?: () => void;
 }) {
   const [title, setTitle] = useState(item.title);
   const [project, setProject] = useState(item.project);
@@ -35,16 +35,19 @@ export default function EditWorkForm({
   const [goal, setGoal] = useState(item.goal ?? "");
   const [note, setNote] = useState(item.note);
 
-  // Captured from onLayout: this form's top offset and height within the
-  // scroll content, so the parent can scroll the note field above the keyboard
-  // regardless of where in the list the project sits.
-  const formTopRef = useRef(0);
-  const formHeightRef = useRef(0);
+  // onFocus can fire late/inconsistently on Android, so we also force focus
+  // from each field's onPressIn and request the parent scroll from both.
   const noteRef = useRef<TextInput>(null);
+  const goalRef = useRef<TextInput>(null);
 
   const focusNoteField = () => {
     noteRef.current?.focus();
-    onFocusNoteField?.(formTopRef.current + formHeightRef.current);
+    onFocusNoteField?.();
+  };
+
+  const focusGoalField = () => {
+    goalRef.current?.focus();
+    onFocusGoalField?.();
   };
 
   const submit = () => {
@@ -59,12 +62,7 @@ export default function EditWorkForm({
   };
 
   return (
-    <Card
-      onLayout={(e) => {
-        formTopRef.current = e.nativeEvent.layout.y;
-        formHeightRef.current = e.nativeEvent.layout.height;
-      }}
-    >
+    <Card>
       <View style={styles.header}>
         <Eyebrow>edit project</Eyebrow>
         <Pressable onPress={onCancel}>
@@ -103,14 +101,18 @@ export default function EditWorkForm({
         returnKeyType="next"
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="What should this become?"
-        placeholderTextColor={colors.lavender}
-        value={goal}
-        onChangeText={setGoal}
-        returnKeyType="next"
-      />
+      <Pressable onPressIn={focusGoalField} accessibilityRole="none">
+        <TextInput
+          ref={goalRef}
+          style={styles.input}
+          placeholder="What should this become?"
+          placeholderTextColor={colors.lavender}
+          value={goal}
+          onChangeText={setGoal}
+          onFocus={onFocusGoalField}
+          returnKeyType="next"
+        />
+      </Pressable>
 
       <Pressable onPressIn={focusNoteField} accessibilityRole="none">
         <TextInput
@@ -120,10 +122,7 @@ export default function EditWorkForm({
           placeholderTextColor={colors.lavender}
           value={note}
           onChangeText={setNote}
-          onFocus={() =>
-            onFocusNoteField?.(formTopRef.current + formHeightRef.current)
-          }
-          onBlur={onBlurNoteField}
+          onFocus={onFocusNoteField}
           returnKeyType="done"
           onSubmitEditing={submit}
         />
