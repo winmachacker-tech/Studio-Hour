@@ -3,6 +3,7 @@ import { useAsyncStorage } from "./useAsyncStorage";
 import { SEED_WORK_ITEMS } from "../lib/constants";
 import {
   WORK_ITEM_SCHEMA_VERSION,
+  type ProjectSubtask,
   type WorkItem,
   type WorkStatus,
 } from "../lib/types";
@@ -35,6 +36,18 @@ function normalizeWorkItem(item: WorkItem): WorkItem {
     isMultiSession: item.isMultiSession ?? false,
     schemaVersion: WORK_ITEM_SCHEMA_VERSION,
   };
+}
+
+// When a project tracks progress automatically, keep its progress value in
+// sync with subtask completion. Items in "manual" mode are left untouched.
+// (No progress UI exists yet — this only keeps stored data coherent so the
+// progress slider in a later ticket starts from a correct value.)
+function withAutoProgress(item: WorkItem): WorkItem {
+  if (item.progressMode !== "auto") return item;
+  const subtasks = item.subtasks ?? [];
+  if (subtasks.length === 0) return { ...item, progress: 0 };
+  const done = subtasks.filter((s) => s.done).length;
+  return { ...item, progress: Math.round((done / subtasks.length) * 100) };
 }
 
 export function useTasks() {
@@ -117,6 +130,64 @@ export function useTasks() {
     [setItems]
   );
 
+  const addSubtask = useCallback(
+    (id: string, text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== id) return item;
+          const subtask: ProjectSubtask = {
+            id: `step-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            text: trimmed,
+            done: false,
+            createdAt: new Date().toISOString(),
+          };
+          return withAutoProgress({
+            ...item,
+            subtasks: [...(item.subtasks ?? []), subtask],
+            updatedAt: new Date().toISOString(),
+          });
+        })
+      );
+    },
+    [setItems]
+  );
+
+  const toggleSubtask = useCallback(
+    (id: string, subtaskId: string) => {
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== id) return item;
+          return withAutoProgress({
+            ...item,
+            subtasks: (item.subtasks ?? []).map((s) =>
+              s.id === subtaskId ? { ...s, done: !s.done } : s
+            ),
+            updatedAt: new Date().toISOString(),
+          });
+        })
+      );
+    },
+    [setItems]
+  );
+
+  const deleteSubtask = useCallback(
+    (id: string, subtaskId: string) => {
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.id !== id) return item;
+          return withAutoProgress({
+            ...item,
+            subtasks: (item.subtasks ?? []).filter((s) => s.id !== subtaskId),
+            updatedAt: new Date().toISOString(),
+          });
+        })
+      );
+    },
+    [setItems]
+  );
+
   const activeCount = normalizedItems.filter(
     (i) => i.status !== "Done"
   ).length;
@@ -126,6 +197,9 @@ export function useTasks() {
     addWorkItem,
     toggleDone,
     cycleStatus,
+    addSubtask,
+    toggleSubtask,
+    deleteSubtask,
     activeCount,
     isHydrated,
   };

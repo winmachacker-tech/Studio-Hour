@@ -24,6 +24,9 @@ export default function OpenWorkScreen() {
     addWorkItem,
     toggleDone,
     cycleStatus,
+    addSubtask,
+    toggleSubtask,
+    deleteSubtask,
     isHydrated,
   } = useTasks();
 
@@ -78,6 +81,9 @@ export default function OpenWorkScreen() {
               item={item}
               onToggleDone={() => toggleDone(item.id)}
               onCycleStatus={() => cycleStatus(item.id)}
+              onAddSubtask={(text) => addSubtask(item.id, text)}
+              onToggleSubtask={(subtaskId) => toggleSubtask(item.id, subtaskId)}
+              onDeleteSubtask={(subtaskId) => deleteSubtask(item.id, subtaskId)}
             />
           ))}
 
