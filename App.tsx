@@ -6,6 +6,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
 import AuthScreen from "./src/screens/AuthScreen";
 import MainTabs from "./src/navigation/MainTabs";
+import OneTimeWelcomeModal from "./src/components/shared/OneTimeWelcomeModal";
 import { cleanSeedData } from "./src/lib/cleanSeedData";
 
 function AppContent() {
@@ -56,6 +57,7 @@ export default function App() {
           <AppContent />
         </AuthProvider>
       </NavigationContainer>
+      <OneTimeWelcomeModal />
     </SafeAreaProvider>
   );
 }
